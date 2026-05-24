@@ -140,20 +140,49 @@ function DocumentPage() {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <EditorToolbar editor={editor} title={title} abntMode={abntMode} onAbntChange={setAbntMode} />
-          <div className="flex-1 overflow-auto">
-            <div className="mx-auto my-8 px-4" style={{ width: 816 }}>
-              <div className={`docpro-editor rounded-sm bg-page shadow-md ring-1 ring-black/5 ${abntMode}`} style={{ width: 816 }}>
-                <div className={`docpro-page-content px-[96px] py-[96px] ${abntMode ? "abnt-page" : ""}`} style={{ minHeight: 1056, width: 816 }}>
-                  <EditorContent editor={editor} />
-                </div>
-              </div>
-              <div className="h-12" />
-            </div>
+          <div className="flex-1 overflow-auto" style={{ touchAction: "pinch-zoom" }}>
+            <DocPage abntMode={abntMode} editor={editor} />
           </div>
         </div>
 
         <AiSidebar editor={editor} />
       </div>
+    </div>
+  );
+}
+
+function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<typeof useEditor> }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const compute = () => {
+      const el = wrapRef.current?.parentElement;
+      if (!el) return;
+      const available = el.clientWidth - 32; // px-4 padding
+      setScale(Math.min(1, available / 816));
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, []);
+
+  return (
+    <div className="mx-auto my-8 px-4" ref={wrapRef} style={{ width: 816 * scale }}>
+      <div style={{ width: 816 * scale, height: 1056 * scale }}>
+        <div
+          className={`docpro-editor rounded-sm bg-page shadow-md ring-1 ring-black/5 ${abntMode}`}
+          style={{ width: 816, transform: `scale(${scale})`, transformOrigin: "top left" }}
+        >
+          <div
+            className={`docpro-page-content px-[96px] py-[96px] ${abntMode ? "abnt-page" : ""}`}
+            style={{ minHeight: 1056, width: 816 }}
+          >
+            <EditorContent editor={editor} />
+          </div>
+        </div>
+      </div>
+      <div className="h-12" />
     </div>
   );
 }
