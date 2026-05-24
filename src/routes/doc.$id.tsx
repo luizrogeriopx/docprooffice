@@ -179,7 +179,11 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
   useEffect(() => {
     const el = pageRef.current;
     if (!el) return;
-    const update = () => setContentHeight(Math.max(A4_HEIGHT, el.offsetHeight));
+    const update = () => {
+      const h = el.scrollHeight;
+      const pages = Math.max(1, Math.ceil(h / A4_HEIGHT));
+      setContentHeight(pages * A4_HEIGHT);
+    };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
