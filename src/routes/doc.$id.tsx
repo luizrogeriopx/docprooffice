@@ -290,6 +290,7 @@ function DocumentPage() {
             title={title}
             abntMode={abntMode}
             onAbntChange={setAbntMode}
+            onOpenPageSettings={() => setPageSettingsOpen(true)}
           />
           <div
             className="flex-1 overflow-auto overscroll-contain"
@@ -300,7 +301,7 @@ function DocumentPage() {
               } as React.CSSProperties
             }
           >
-            <DocPage abntMode={abntMode} editor={editor} />
+            <DocPage abntMode={abntMode} editor={editor} pageSettings={pageSettings} />
           </div>
         </div>
 
