@@ -155,6 +155,7 @@ function DocumentPage() {
       FontFamily.configure({ types: ["textStyle"] }),
       Color.configure({ types: ["textStyle"] }),
       Highlight.configure({ multicolor: true }),
+      PageBreak,
       PaginationBreaks,
     ],
     content: "",
