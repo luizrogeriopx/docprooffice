@@ -52,6 +52,7 @@ function DocumentPage() {
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Table.configure({ resizable: true }),
       TableRow, TableHeader, TableCell,
+      TableFormulas,
     ],
     content: "",
     onUpdate: () => scheduleSave(),
