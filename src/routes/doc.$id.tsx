@@ -31,6 +31,14 @@ import { Loader2, FileText, Cloud, CloudOff, Check } from "lucide-react";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { AiSidebar } from "@/components/editor/AiSidebar";
 import { DocumentsSidebar } from "@/components/editor/DocumentsSidebar";
+import { PageSettingsDialog } from "@/components/editor/PageSettingsDialog";
+import { PageOverlays } from "@/components/editor/PageOverlays";
+import {
+  DEFAULT_PAGE_SETTINGS,
+  loadPageSettings,
+  savePageSettings,
+  type PageSettings,
+} from "@/components/editor/pageSettings";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
 
