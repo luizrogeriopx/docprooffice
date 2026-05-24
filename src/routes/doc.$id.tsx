@@ -377,17 +377,17 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
     if (!contentEl || !editor) return;
 
     let frame: number | null = null;
-    let observer: ResizeObserver | null = null;
     let previousSignature = "";
     let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
+    let isPaginating = false;
+    let lastDocSignature = "";
 
     const layout = () => {
+      isPaginating = true;
       const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
-      if (!prose) return;
-
-      // Disconnect observer temporarily to prevent resize loop during class toggling
-      if (observer) {
-        observer.disconnect();
+      if (!prose) {
+        isPaginating = false;
+        return;
       }
 
       const styles = window.getComputedStyle(contentEl);
@@ -452,10 +452,6 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         });
       } finally {
         prose.classList.remove("docpro-measuring-pagination");
-        // Reconnect observer
-        if (observer && prose) {
-          observer.observe(prose);
-        }
       }
 
       autoBreaks.sort((a, b) => a.pos - b.pos || b.height - a.height);
@@ -464,7 +460,6 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       if (signature !== previousSignature) {
         previousSignature = signature;
         setPaginationBreaks(editor.view, autoBreaks);
-        return;
       }
 
       const measuredHeight = measuredBottom;
@@ -472,7 +467,11 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         1,
         Math.floor(Math.max(0, measuredHeight - 1) / (A4_HEIGHT + A4_PAGE_GAP)) + 1,
       );
-      setPageCount((current) => (current === pages ? current : pages));
+      if (pageCountRef.current !== pages) {
+        pageCountRef.current = pages;
+        setPageCount(pages);
+      }
+      isPaginating = false;
     };
 
     const schedule = () => {
