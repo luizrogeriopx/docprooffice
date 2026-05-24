@@ -122,6 +122,16 @@ function DocumentPage() {
     if (!loading && !user) navigate({ to: "/login" });
   }, [user, loading, navigate]);
 
+  // Load page settings (footer / page numbers / watermark)
+  useEffect(() => {
+    setPageSettings(loadPageSettings(id));
+  }, [id]);
+
+  const updatePageSettings = (next: PageSettings) => {
+    setPageSettings(next);
+    savePageSettings(id, next);
+  };
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] } }),
