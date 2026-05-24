@@ -475,11 +475,15 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
     };
 
     const schedule = () => {
+      if (isPaginating) return;
+      const docSignature = `${editor.state.doc.content.size}:${editor.state.doc.childCount}:${abntMode}:${scale}`;
+      if (docSignature === lastDocSignature) return;
+      lastDocSignature = docSignature;
       if (frame !== null) cancelAnimationFrame(frame);
       if (debounceTimeout !== null) clearTimeout(debounceTimeout);
       debounceTimeout = setTimeout(() => {
         frame = requestAnimationFrame(layout);
-      }, 100);
+      }, 180);
     };
 
     schedule();
@@ -488,18 +492,9 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       editor.on("transaction", schedule);
     }
 
-    const attachObserver = () => {
-      const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
-      if (!prose) return;
-      observer = new ResizeObserver(schedule);
-      observer.observe(prose);
-    };
-    requestAnimationFrame(attachObserver);
-
     return () => {
       if (frame !== null) cancelAnimationFrame(frame);
       if (debounceTimeout !== null) clearTimeout(debounceTimeout);
-      observer?.disconnect();
       if (editor) {
         editor.off("update", schedule);
         editor.off("transaction", schedule);
