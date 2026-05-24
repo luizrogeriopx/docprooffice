@@ -35,6 +35,7 @@ function DocumentPage() {
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [docLoaded, setDocLoaded] = useState(false);
+  const [abntMode, setAbntMode] = useState<string>(""); // "", "abnt", "abnt abnt-arial", "abnt abnt-references", "abnt abnt-cover"
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -136,11 +137,11 @@ function DocumentPage() {
         <DocumentsSidebar currentId={id} userId={user.id} />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <EditorToolbar editor={editor} title={title} />
+          <EditorToolbar editor={editor} title={title} abntMode={abntMode} onAbntChange={setAbntMode} />
           <div className="flex-1 overflow-auto">
             <div className="mx-auto my-8 w-full max-w-[816px] px-4">
-              <div className="docpro-editor rounded-sm bg-page shadow-md ring-1 ring-black/5">
-                <div className="docpro-page-content min-h-[1056px] px-[96px] py-[96px]">
+              <div className={`docpro-editor rounded-sm bg-page shadow-md ring-1 ring-black/5 ${abntMode}`}>
+                <div className={`docpro-page-content min-h-[1056px] px-[96px] py-[96px] ${abntMode ? "abnt-page" : ""}`}>
                   <EditorContent editor={editor} />
                 </div>
               </div>

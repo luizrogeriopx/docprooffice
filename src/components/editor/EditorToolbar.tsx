@@ -6,7 +6,7 @@ import {
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Link as LinkIcon, Image as ImageIcon, Table as TableIcon,
   Heading1, Heading2, Heading3, Heading4, Heading5, Heading6,
-  Download, FileText,
+  Download, FileText, BookMarked, Check as CheckIcon,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -20,7 +20,20 @@ import { toast } from "sonner";
 import { useRef } from "react";
 import { exportToPdf, exportToDocx } from "@/lib/export";
 
-interface Props { editor: Editor | null; title: string; }
+interface Props {
+  editor: Editor | null;
+  title: string;
+  abntMode?: string;
+  onAbntChange?: (mode: string) => void;
+}
+
+const ABNT_OPTIONS: { value: string; label: string; desc: string }[] = [
+  { value: "", label: "Sem formatação", desc: "Remove formatação ABNT" },
+  { value: "abnt", label: "ABNT — Times New Roman", desc: "Trabalho acadêmico padrão (fonte Times, 12pt, espaço 1,5, margens 3/2/2/3 cm)" },
+  { value: "abnt abnt-arial", label: "ABNT — Arial", desc: "Trabalho acadêmico (fonte Arial, 12pt, espaço 1,5)" },
+  { value: "abnt abnt-references", label: "ABNT — Referências", desc: "Alinhamento à esquerda, espaço simples, sem recuo" },
+  { value: "abnt abnt-cover", label: "ABNT — Capa", desc: "Tudo centralizado e em maiúsculas" },
+];
 
 const Btn = ({ active, onClick, children, label }: { active?: boolean; onClick: () => void; children: React.ReactNode; label: string }) => (
   <Button
@@ -36,7 +49,7 @@ const Btn = ({ active, onClick, children, label }: { active?: boolean; onClick: 
   </Button>
 );
 
-export function EditorToolbar({ editor, title }: Props) {
+export function EditorToolbar({ editor, title, abntMode = "", onAbntChange }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   if (!editor) return null;
 
@@ -131,6 +144,33 @@ export function EditorToolbar({ editor, title }: Props) {
       <Btn label="Tabela" onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}><TableIcon className="h-4 w-4" /></Btn>
 
       <div className="ml-auto flex items-center gap-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" size="sm" variant="ghost" className="h-8" title="Formatar documento (ABNT)">
+              <BookMarked className="mr-1.5 h-4 w-4" /> Formatar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <div className="px-2 py-1.5 text-xs font-semibold uppercase text-muted-foreground">Normas ABNT</div>
+            {ABNT_OPTIONS.map((opt) => {
+              const active = abntMode === opt.value;
+              return (
+                <DropdownMenuItem
+                  key={opt.value || "none"}
+                  onClick={() => { onAbntChange?.(opt.value); toast.success(active ? "Formatação mantida" : `Aplicado: ${opt.label}`); }}
+                  className="flex flex-col items-start gap-0.5 py-2"
+                >
+                  <div className="flex w-full items-center gap-2">
+                    {active ? <CheckIcon className="h-3.5 w-3.5 text-primary" /> : <span className="w-3.5" />}
+                    <span className="font-medium">{opt.label}</span>
+                  </div>
+                  <span className="pl-5 text-xs text-muted-foreground">{opt.desc}</span>
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button type="button" size="sm" variant="ghost" className="h-8">
