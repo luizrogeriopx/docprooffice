@@ -199,12 +199,19 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
 
       breaks.forEach((pageBreak) => {
         const y = pageBreak.offsetTop;
-        const nextPageContentTop = (Math.floor(y / A4_HEIGHT) + 1) * A4_HEIGHT + paddingTop;
-        const height = Math.max(40, nextPageContentTop - y);
+        const absoluteY = paddingTop + y;
+        const nextPageContentTop = (Math.floor(absoluteY / A4_HEIGHT) + 1) * A4_HEIGHT + paddingTop;
+        const height = Math.max(40, nextPageContentTop - absoluteY);
         pageBreak.style.setProperty("--docpro-page-break-height", `${height}px`);
       });
 
-      const measuredHeight = paddingTop + prose.scrollHeight + paddingBottom;
+      const contentBottom = Array.from(prose.children).reduce((bottom, child) => {
+        if (!(child instanceof HTMLElement)) return bottom;
+        const childStyles = window.getComputedStyle(child);
+        const marginBottom = parseFloat(childStyles.marginBottom) || 0;
+        return Math.max(bottom, child.offsetTop + child.offsetHeight + marginBottom);
+      }, 0);
+      const measuredHeight = paddingTop + contentBottom + paddingBottom;
       const pages = Math.max(1, Math.ceil(measuredHeight / A4_HEIGHT));
       setPageCount((current) => (current === pages ? current : pages));
     };
@@ -242,7 +249,9 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
 
   return (
     <div className="px-4 py-8 sm:px-6" ref={wrapRef}>
-      <div style={{ width: A4_WIDTH * scale, height: contentHeight * scale, marginInline: "auto" }}>
+      <div
+        style={{ width: A4_WIDTH * scale, height: contentHeight * scale, marginInline: "auto" }}
+      >
         <div
           ref={pageRef}
           className={`docpro-editor relative ${abntMode}`}
@@ -263,7 +272,9 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
           ))}
           <div
             ref={contentRef}
-            className={`docpro-page-content relative z-10 px-[96px] py-[96px] ${abntMode ? "abnt-page" : ""}`}
+            className={`docpro-page-content relative z-10 px-[96px] py-[96px] ${
+              abntMode ? "abnt-page" : ""
+            }`}
             style={{ minHeight: contentHeight, width: A4_WIDTH }}
           >
             <EditorContent editor={editor} />
