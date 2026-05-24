@@ -461,13 +461,7 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         return;
       }
 
-      const contentBottom = Array.from(prose.children).reduce((bottom, child) => {
-        if (!(child instanceof HTMLElement)) return bottom;
-        const childStyles = window.getComputedStyle(child);
-        const marginBottom = parseFloat(childStyles.marginBottom) || 0;
-        return Math.max(bottom, child.offsetTop + child.offsetHeight + marginBottom);
-      }, 0);
-      const measuredHeight = paddingTop + contentBottom + paddingBottom;
+      const measuredHeight = measuredBottom;
       const pages = Math.max(
         1,
         Math.floor(Math.max(0, measuredHeight - 1) / (A4_HEIGHT + A4_PAGE_GAP)) + 1,
