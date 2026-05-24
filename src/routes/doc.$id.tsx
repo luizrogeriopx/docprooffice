@@ -159,8 +159,10 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
     const compute = () => {
       const el = wrapRef.current;
       if (!el) return;
-      const available = el.clientWidth; // already excludes padding
-      setScale(Math.min(1, available / 816));
+      const styles = window.getComputedStyle(el);
+      const horizontalPadding = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
+      const available = el.clientWidth - horizontalPadding;
+      setScale(Math.min(1, Math.max(0, available) / 816));
     };
     compute();
     window.addEventListener("resize", compute);
@@ -168,7 +170,7 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
   }, []);
 
   return (
-    <div className="my-8 px-4 sm:px-6" ref={wrapRef}>
+    <div className="px-4 py-8 sm:px-6" ref={wrapRef}>
       <div style={{ width: 816 * scale, height: 1056 * scale, marginInline: "auto" }}>
         <div
           className={`docpro-editor rounded-sm bg-page shadow-md ring-1 ring-black/5 ${abntMode}`}
@@ -182,7 +184,7 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
           </div>
         </div>
       </div>
-      <div className="h-12" />
+      <div className="h-8" />
     </div>
   );
 }
