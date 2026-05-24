@@ -333,6 +333,19 @@ function splitLongParagraph(block: string): string[] {
   });
 }
 
+function getBlockDocumentPosition(view: EditorView, block: HTMLElement): number | null {
+  let found: number | null = null;
+  view.state.doc.descendants((node, pos) => {
+    if (found !== null || !node.isBlock) return false;
+    if (view.nodeDOM(pos) === block) {
+      found = pos;
+      return false;
+    }
+    return true;
+  });
+  return found;
+}
+
 function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<typeof useEditor> }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
