@@ -50,7 +50,6 @@ export function PageOverlays({
               maxWidth: wmSize,
               maxHeight: pageHeight * settings.watermark.scale,
               objectFit: "contain",
-              transform: "rotate(-30deg)",
             }}
           />
         </div>,
