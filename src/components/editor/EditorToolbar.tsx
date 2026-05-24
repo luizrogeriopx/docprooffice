@@ -54,6 +54,7 @@ interface Props {
   title: string;
   abntMode?: string;
   onAbntChange?: (mode: string) => void;
+  onOpenPageSettings?: () => void;
 }
 
 const ABNT_OPTIONS: { value: string; label: string; desc: string }[] = [
