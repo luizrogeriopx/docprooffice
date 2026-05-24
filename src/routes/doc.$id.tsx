@@ -249,9 +249,7 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
 
   return (
     <div className="px-4 py-8 sm:px-6" ref={wrapRef}>
-      <div
-        style={{ width: A4_WIDTH * scale, height: contentHeight * scale, marginInline: "auto" }}
-      >
+      <div style={{ width: A4_WIDTH * scale, height: contentHeight * scale, marginInline: "auto" }}>
         <div
           ref={pageRef}
           className={`docpro-editor relative ${abntMode}`}
