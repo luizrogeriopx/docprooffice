@@ -385,14 +385,14 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange }: Pr
         size="sm"
         variant="ghost"
         className="h-8 gap-1.5 px-2"
-        title="Adicionar página (quebra A4)"
+        title="Nova página (quebra A4)"
         onClick={() => {
           editor.chain().focus().insertPageBreak().run();
           toast.success("Nova página adicionada");
         }}
       >
         <FilePlus className="h-4 w-4" />
-        <span className="hidden sm:inline text-xs">Adicionar página</span>
+        <span className="hidden sm:inline text-xs">Nova página</span>
       </Button>
 
       <div className="ml-auto flex items-center gap-1">
