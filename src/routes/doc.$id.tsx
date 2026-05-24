@@ -255,13 +255,6 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       const paddingBottom = parseFloat(styles.paddingBottom) || 0;
       const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
 
-      const existingBreaks = Array.from(
-        prose.querySelectorAll<HTMLElement>(".docpro-auto-page-break"),
-      );
-      existingBreaks.forEach((breakEl) => {
-        breakEl.style.setProperty("--docpro-auto-page-break-height", "0px");
-      });
-
       Array.from(prose.children).forEach((child) => {
         if (!(child instanceof HTMLElement)) return;
         if (child.classList.contains("docpro-page-break")) {
@@ -283,6 +276,7 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, blockquote, pre"),
       ).filter((block) => !block.closest(".docpro-page-break"));
 
+      prose.classList.add("docpro-measuring-pagination");
       textBlocks.forEach((block) => {
         const range = document.createRange();
         range.selectNodeContents(block);
@@ -320,6 +314,7 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
           }
         }
       });
+      prose.classList.remove("docpro-measuring-pagination");
 
       const signature = paginationBreaksSignature(autoBreaks);
       if (signature !== previousSignature) {
