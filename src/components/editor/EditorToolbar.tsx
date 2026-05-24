@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { exportToPdf, exportToDocx } from "@/lib/export";
 
 interface Props {
@@ -79,16 +79,32 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange }: Pr
 
   const FONT_SIZES = ["8", "9", "10", "11", "12", "14", "16", "18", "20", "24", "28", "32", "36", "48", "60", "72"];
 
-  const currentFontSize = (() => {
-    const attrs = editor.getAttributes("textStyle") as { fontSize?: string };
-    if (attrs?.fontSize) return String(parseInt(attrs.fontSize, 10));
-    for (const l of [1, 2, 3, 4, 5, 6] as const) {
-      if (editor.isActive("heading", { level: l })) {
-        return { 1: "32", 2: "24", 3: "20", 4: "16", 5: "14", 6: "12" }[l];
-      }
-    }
-    return "12";
-  })();
+  // Read the actual rendered font size at the caret from the DOM (single source of truth).
+  const [currentFontSize, setCurrentFontSize] = useState("12");
+  useEffect(() => {
+    if (!editor) return;
+    const compute = () => {
+      try {
+        const { from } = editor.state.selection;
+        const dom = editor.view.domAtPos(from);
+        let node: Node | null = dom.node;
+        if (node && node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+        if (!(node instanceof HTMLElement)) return;
+        const pxStr = window.getComputedStyle(node).fontSize; // e.g. "16px"
+        const px = parseFloat(pxStr);
+        if (!isFinite(px)) return;
+        const pt = Math.round((px * 72) / 96);
+        setCurrentFontSize(String(pt));
+      } catch { /* noop */ }
+    };
+    compute();
+    editor.on("selectionUpdate", compute);
+    editor.on("transaction", compute);
+    return () => {
+      editor.off("selectionUpdate", compute);
+      editor.off("transaction", compute);
+    };
+  }, [editor]);
 
   return (
     <div className="sticky top-12 z-10 flex flex-wrap items-center gap-1 border-b bg-toolbar px-3 py-1.5 text-toolbar-foreground">
