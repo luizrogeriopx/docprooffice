@@ -157,9 +157,9 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
 
   useEffect(() => {
     const compute = () => {
-      const el = wrapRef.current?.parentElement;
+      const el = wrapRef.current;
       if (!el) return;
-      const available = el.clientWidth - 32; // px-4 padding
+      const available = el.clientWidth; // already excludes padding
       setScale(Math.min(1, available / 816));
     };
     compute();
@@ -168,8 +168,8 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
   }, []);
 
   return (
-    <div className="mx-auto my-8 px-4" ref={wrapRef} style={{ width: 816 * scale }}>
-      <div style={{ width: 816 * scale, height: 1056 * scale }}>
+    <div className="my-8 px-4 sm:px-6" ref={wrapRef}>
+      <div style={{ width: 816 * scale, height: 1056 * scale, marginInline: "auto" }}>
         <div
           className={`docpro-editor rounded-sm bg-page shadow-md ring-1 ring-black/5 ${abntMode}`}
           style={{ width: 816, transform: `scale(${scale})`, transformOrigin: "top left" }}
