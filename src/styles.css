@@ -109,7 +109,7 @@
 .docpro-editor .ProseMirror ul { list-style: disc; padding-left: 1.5em; margin: 0.4em 0; }
 .docpro-editor .ProseMirror ol { list-style: decimal; padding-left: 1.5em; margin: 0.4em 0; }
 .docpro-editor .ProseMirror a { color: var(--primary); text-decoration: underline; }
-.docpro-editor .ProseMirror img { max-width: 100%; height: auto; border-radius: 4px; }
+.docpro-editor .ProseMirror img { height: auto; border-radius: 4px; }
 .docpro-editor .ProseMirror table { border-collapse: collapse; margin: 0.5em 0; width: 100%; table-layout: fixed; }
 .docpro-editor .ProseMirror th, .docpro-editor .ProseMirror td { border: 1px solid oklch(0.86 0.005 260); padding: 6px 8px; vertical-align: top; }
 .docpro-editor .ProseMirror th { background: oklch(0.96 0.005 260); font-weight: 600; }
