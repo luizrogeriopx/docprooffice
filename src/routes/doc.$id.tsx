@@ -17,6 +17,8 @@ import { TableHeader } from "@tiptap/extension-table-header";
 import { TableFormulas } from "@/components/editor/TableFormulas";
 import { FontSize } from "@/components/editor/FontSize";
 import { FontFamily } from "@tiptap/extension-font-family";
+import { Color } from "@tiptap/extension-color";
+import { Highlight } from "@tiptap/extension-highlight";
 import { PageBreak } from "@/components/editor/PageBreak";
 import {
   PaginationBreaks,
@@ -151,6 +153,8 @@ function DocumentPage() {
       TableFormulas,
       FontSize,
       FontFamily.configure({ types: ["textStyle"] }),
+      Color.configure({ types: ["textStyle"] }),
+      Highlight.configure({ multicolor: true }),
       PageBreak,
       PaginationBreaks,
     ],

@@ -29,8 +29,11 @@ import {
   FilePlus,
   Settings2,
   Check as CheckIcon,
+  Baseline,
+  Highlighter,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -119,6 +122,66 @@ const FONT_SIZES = [
   "60",
   "72",
 ];
+
+const TEXT_COLORS = [
+  "#000000", "#434343", "#666666", "#999999", "#b7b7b7", "#cccccc", "#d9d9d9", "#efefef", "#f3f3f3", "#ffffff",
+  "#980000", "#ff0000", "#ff9900", "#ffff00", "#00ff00", "#00ffff", "#4a86e8", "#0000ff", "#9900ff", "#ff00ff",
+  "#e6b8af", "#f4cccc", "#fce5cd", "#fff2cc", "#d9ead3", "#d0e0e3", "#c9daf8", "#cfe2f3", "#d9d2e9", "#ead1dc",
+  "#cc4125", "#e06666", "#f6b26b", "#ffd966", "#93c47d", "#76a5af", "#6d9eeb", "#6fa8dc", "#8e7cc3", "#c27ba0",
+  "#a61c00", "#cc0000", "#e69138", "#f1c232", "#6aa84f", "#45818e", "#3c78d8", "#3d85c6", "#674ea7", "#a64d79",
+];
+
+const HIGHLIGHT_COLORS = [
+  "#ffff00", "#00ff00", "#00ffff", "#ff00ff", "#0000ff", "#ff0000",
+  "#000080", "#008080", "#008000", "#800080", "#800000", "#808000",
+  "#c0c0c0", "#808080", "#000000", "#ffffff", "#ffe599", "#fce5cd",
+];
+
+function ColorPalette({
+  colors,
+  onSelect,
+  onClear,
+  clearLabel,
+  current,
+}: {
+  colors: string[];
+  onSelect: (color: string) => void;
+  onClear: () => void;
+  clearLabel: string;
+  current?: string;
+}) {
+  return (
+    <div className="w-[228px] space-y-2">
+      <button
+        type="button"
+        onClick={onClear}
+        className="w-full rounded-md border bg-background px-2 py-1.5 text-left text-xs hover:bg-accent"
+      >
+        {clearLabel}
+      </button>
+      <div className="grid grid-cols-10 gap-1">
+        {colors.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => onSelect(c)}
+            title={c}
+            className={`h-5 w-5 rounded-sm border ${current?.toLowerCase() === c.toLowerCase() ? "ring-2 ring-primary ring-offset-1" : ""}`}
+            style={{ backgroundColor: c }}
+          />
+        ))}
+      </div>
+      <div className="flex items-center gap-2 pt-1">
+        <label className="text-xs text-muted-foreground">Personalizada</label>
+        <input
+          type="color"
+          onChange={(e) => onSelect(e.target.value)}
+          className="h-6 w-10 cursor-pointer rounded border bg-transparent p-0"
+        />
+      </div>
+    </div>
+  );
+}
 
 export function EditorToolbar({ editor, title, abntMode = "", onAbntChange, onOpenPageSettings }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -292,6 +355,63 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange, onOp
       >
         <Strikethrough className="h-4 w-4" />
       </Btn>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="relative h-8 w-8 p-0"
+            title="Cor do texto"
+            aria-label="Cor do texto"
+          >
+            <Baseline className="h-4 w-4" />
+            <span
+              className="absolute bottom-1 left-1.5 right-1.5 h-1 rounded-sm border border-border/40"
+              style={{ backgroundColor: (editor.getAttributes("textStyle").color as string) || "#000000" }}
+            />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-2" align="start">
+          <ColorPalette
+            colors={TEXT_COLORS}
+            current={editor.getAttributes("textStyle").color as string | undefined}
+            onSelect={(c) => editor.chain().focus().setColor(c).run()}
+            onClear={() => editor.chain().focus().unsetColor().run()}
+            clearLabel="Automático"
+          />
+        </PopoverContent>
+      </Popover>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="relative h-8 w-8 p-0"
+            title="Cor do realce"
+            aria-label="Cor do realce"
+          >
+            <Highlighter className="h-4 w-4" />
+            <span
+              className="absolute bottom-1 left-1.5 right-1.5 h-1 rounded-sm border border-border/40"
+              style={{ backgroundColor: (editor.getAttributes("highlight").color as string) || "#ffff00" }}
+            />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-2" align="start">
+          <ColorPalette
+            colors={HIGHLIGHT_COLORS}
+            current={editor.getAttributes("highlight").color as string | undefined}
+            onSelect={(c) => editor.chain().focus().setHighlight({ color: c }).run()}
+            onClear={() => editor.chain().focus().unsetHighlight().run()}
+            clearLabel="Sem realce"
+          />
+        </PopoverContent>
+      </Popover>
+
 
       <Separator orientation="vertical" className="mx-1 h-6" />
       <Btn
