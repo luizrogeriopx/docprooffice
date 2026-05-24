@@ -254,6 +254,9 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       const paddingTop = parseFloat(styles.paddingTop) || 0;
       const paddingBottom = parseFloat(styles.paddingBottom) || 0;
       const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
+      const proseRect = prose.getBoundingClientRect();
+      const renderedScale = prose.offsetWidth > 0 ? proseRect.width / prose.offsetWidth : scale;
+      const visualScale = renderedScale > 0 ? renderedScale : 1;
 
       Array.from(prose.children).forEach((child) => {
         if (!(child instanceof HTMLElement)) return;
@@ -272,52 +275,77 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       });
 
       const autoBreaks: PaginationBreakSpec[] = [];
+      const visualLines: Array<{
+        left: number;
+        top: number;
+        docTop: number;
+        docBottom: number;
+      }> = [];
       const textBlocks = Array.from(
-        prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, blockquote, pre"),
-      ).filter((block) => !block.closest(".docpro-page-break"));
+        prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre"),
+      ).filter(
+        (block) =>
+          !block.closest(".docpro-page-break") &&
+          !(block.tagName === "LI" && block.querySelector("p, h1, h2, h3, h4, h5, h6, pre")),
+      );
 
       prose.classList.add("docpro-measuring-pagination");
       try {
         textBlocks.forEach((block) => {
           const range = document.createRange();
           range.selectNodeContents(block);
-          const proseRect = prose.getBoundingClientRect();
-          const lineRects = Array.from(range.getClientRects())
-            .filter((rect) => rect.width > 0 && rect.height > 0)
-            .map((rect) => ({
-              left: rect.left,
-              top: rect.top,
-              docTop: rect.top - proseRect.top + paddingTop,
-              docBottom: rect.bottom - proseRect.top + paddingTop,
-            }));
+          const lineRects = Array.from(range.getClientRects()).filter(
+            (rect) => rect.width > 0 && rect.height > 0,
+          );
           range.detach();
 
           if (lineRects.length === 0) return;
 
-          let accumulatedShift = 0;
-          for (let index = 0; index < lineRects.length; index += 1) {
-            const currentLine = lineRects[index];
-            const lineTop = currentLine.docTop + accumulatedShift;
-            const lineBottom = currentLine.docBottom + accumulatedShift;
-            const pageIndex = Math.floor(Math.max(0, lineTop) / (A4_HEIGHT + A4_PAGE_GAP));
-            const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
+          const grouped = new Map<number, DOMRect[]>();
+          lineRects.forEach((rect) => {
+            const key = Math.round(rect.top * 2) / 2;
+            grouped.set(key, [...(grouped.get(key) ?? []), rect]);
+          });
 
-            if (lineBottom > pageBottom) {
-              const result = editor.view.posAtCoords({
-                left: currentLine.left + 1,
-                top: currentLine.top + 1,
-              });
-              if (!result) continue;
-              const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-              const height = Math.max(0, nextPageY - lineTop);
+          grouped.forEach((rects) => {
+            const left = Math.min(...rects.map((rect) => rect.left));
+            const top = Math.min(...rects.map((rect) => rect.top));
+            const bottom = Math.max(...rects.map((rect) => rect.bottom));
+            visualLines.push({
+              left,
+              top,
+              docTop: (top - proseRect.top) / visualScale + paddingTop,
+              docBottom: (bottom - proseRect.top) / visualScale + paddingTop,
+            });
+          });
+        });
+      } finally {
+        prose.classList.remove("docpro-measuring-pagination");
+      }
+
+      let accumulatedShift = 0;
+      visualLines
+        .sort((a, b) => a.docTop - b.docTop || a.docBottom - b.docBottom)
+        .forEach((currentLine) => {
+          const lineTop = currentLine.docTop + accumulatedShift;
+          const lineBottom = currentLine.docBottom + accumulatedShift;
+          const pageIndex = Math.floor(Math.max(0, lineTop) / (A4_HEIGHT + A4_PAGE_GAP));
+          const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
+
+          if (lineBottom > pageBottom) {
+            const result = editor.view.posAtCoords({
+              left: currentLine.left + 1,
+              top: currentLine.top + 1,
+            });
+            if (!result) return;
+            const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+            const height = Math.max(0, nextPageY - lineTop);
+            if (height > 0) {
               autoBreaks.push({ pos: result.pos, height });
               accumulatedShift += height;
             }
           }
         });
-      } finally {
-        prose.classList.remove("docpro-measuring-pagination");
-      }
 
       const signature = paginationBreaksSignature(autoBreaks);
       if (signature !== previousSignature) {
@@ -367,7 +395,7 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         editor.off("transaction", schedule);
       }
     };
-  }, [editor, abntMode]);
+  }, [editor, abntMode, scale]);
 
   const pageStride = A4_HEIGHT + A4_PAGE_GAP;
   const contentHeight = pageCount * A4_HEIGHT + Math.max(0, pageCount - 1) * A4_PAGE_GAP;
