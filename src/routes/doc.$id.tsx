@@ -307,6 +307,13 @@ function DocumentPage() {
 
         <AiSidebar editor={editor} />
       </div>
+
+      <PageSettingsDialog
+        open={pageSettingsOpen}
+        onOpenChange={setPageSettingsOpen}
+        value={pageSettings}
+        onChange={updatePageSettings}
+      />
     </div>
   );
 }
