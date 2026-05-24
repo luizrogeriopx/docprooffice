@@ -27,6 +27,7 @@ import {
   FileText,
   BookMarked,
   FilePlus,
+  Settings2,
   Check as CheckIcon,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
