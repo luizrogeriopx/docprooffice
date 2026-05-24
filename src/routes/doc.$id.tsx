@@ -133,6 +133,20 @@ function DocumentPage() {
     content: "",
     editorProps: {
       transformPastedHTML: (html) => formatPastedHtmlAbnt(html),
+      handlePaste: (view, event) => {
+        const clipboard = event.clipboardData;
+        if (!clipboard) return false;
+
+        const source = clipboard.getData("text/html") || clipboard.getData("text/plain");
+        const html = clipboard.getData("text/html")
+          ? formatPastedHtmlAbnt(source)
+          : formatPlainTextAsAbntHtml(source);
+
+        if (!html) return false;
+        event.preventDefault();
+        insertAbntHtml(view, html);
+        return true;
+      },
     },
     onUpdate: () => scheduleSave(),
   });
