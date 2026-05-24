@@ -141,9 +141,9 @@ function DocumentPage() {
         <div className="flex min-w-0 flex-1 flex-col">
           <EditorToolbar editor={editor} title={title} abntMode={abntMode} onAbntChange={setAbntMode} />
           <div className="flex-1 overflow-auto">
-            <div className="mx-auto my-8 w-full max-w-[816px] px-4">
-              <div className={`docpro-editor rounded-sm bg-page shadow-md ring-1 ring-black/5 ${abntMode}`}>
-                <div className={`docpro-page-content min-h-[1056px] px-[96px] py-[96px] ${abntMode ? "abnt-page" : ""}`}>
+            <div className="mx-auto my-8 px-4" style={{ width: 816 }}>
+              <div className={`docpro-editor rounded-sm bg-page shadow-md ring-1 ring-black/5 ${abntMode}`} style={{ width: 816 }}>
+                <div className={`docpro-page-content px-[96px] py-[96px] ${abntMode ? "abnt-page" : ""}`} style={{ minHeight: 1056, width: 816 }}>
                   <EditorContent editor={editor} />
                 </div>
               </div>
