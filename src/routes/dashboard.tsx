@@ -147,13 +147,42 @@ function Dashboard() {
                     </div>
                   </div>
                 </Link>
-                <button
-                  onClick={() => remove(d.id)}
-                  className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-md bg-background/80 opacity-0 transition hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100"
-                  aria-label="Excluir"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="grid h-8 w-8 place-items-center rounded-md bg-background/80 hover:bg-accent"
+                        aria-label="Compartilhar"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenuLabel>Compartilhar</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => shareWhatsApp(d, false)}>
+                        <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => shareWhatsApp(d, true)}>
+                        <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp Business
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => shareEmail(d)}>
+                        <Mail className="mr-2 h-4 w-4" /> E-mail
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => shareDrive(d)}>
+                        <HardDrive className="mr-2 h-4 w-4" /> Google Drive
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <button
+                    onClick={() => remove(d.id)}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-background/80 transition hover:bg-destructive hover:text-destructive-foreground"
+                    aria-label="Excluir"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
