@@ -47,7 +47,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" },
       { title: "DocPro — Editor de documentos online" },
       { name: "description", content: "DocPro: editor de documentos profissional com IA, exportação PDF/DOCX e auto save em tempo real." },
       { property: "og:title", content: "DocPro — Editor de documentos online" },
