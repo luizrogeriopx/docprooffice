@@ -384,19 +384,17 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
 
     const layout = () => {
       isPaginating = true;
-      const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
-      if (!prose) {
-        isPaginating = false;
-        return;
-      }
+      try {
+        const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
+        if (!prose) return;
 
-      const styles = window.getComputedStyle(contentEl);
-      const paddingTop = parseFloat(styles.paddingTop) || 0;
-      const paddingBottom = parseFloat(styles.paddingBottom) || 0;
-      const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
-      const proseRect = prose.getBoundingClientRect();
-      const renderedScale = prose.offsetWidth > 0 ? proseRect.width / prose.offsetWidth : scale;
-      const visualScale = renderedScale > 0 ? renderedScale : 1;
+        const styles = window.getComputedStyle(contentEl);
+        const paddingTop = parseFloat(styles.paddingTop) || 0;
+        const paddingBottom = parseFloat(styles.paddingBottom) || 0;
+        const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
+        const proseRect = prose.getBoundingClientRect();
+        const renderedScale = prose.offsetWidth > 0 ? proseRect.width / prose.offsetWidth : scale;
+        const visualScale = renderedScale > 0 ? renderedScale : 1;
 
       Array.from(prose.children).forEach((child) => {
         if (!(child instanceof HTMLElement)) return;
@@ -471,7 +469,9 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         pageCountRef.current = pages;
         setPageCount(pages);
       }
-      isPaginating = false;
+      } finally {
+        isPaginating = false;
+      }
     };
 
     const schedule = () => {
