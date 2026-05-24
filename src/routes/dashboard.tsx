@@ -39,18 +39,7 @@ function Dashboard() {
 
   useEffect(() => { if (user) load(); }, [user]);
 
-  const create = async () => {
-    if (!user) return;
-    setBusy(true);
-    const { data, error } = await supabase
-      .from("documents")
-      .insert({ user_id: user.id, title: "Documento sem título" })
-      .select("id")
-      .single();
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    navigate({ to: "/doc/$id", params: { id: data.id } });
-  };
+  const openCreate = () => setDialogOpen(true);
 
   const remove = async (id: string) => {
     if (!confirm("Excluir este documento?")) return;
