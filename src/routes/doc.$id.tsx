@@ -38,6 +38,48 @@ export const Route = createFileRoute("/doc/$id")({
   head: () => ({ meta: [{ title: "Editor — DocPro" }] }),
 });
 
+const ABNT_FONT_STYLE = "font-family: 'Times New Roman', Times, serif; font-size: 12pt;";
+
+function formatPastedHtmlAbnt(html: string): string {
+  if (typeof window === "undefined" || !html) return html;
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+
+    // Remove style/script/meta tags entirely
+    doc.querySelectorAll("style, script, meta, link").forEach((n) => n.remove());
+
+    // Strip class, style, color, face attributes; unwrap <font>
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT);
+    const elements: Element[] = [];
+    let node: Node | null;
+    while ((node = walker.nextNode())) elements.push(node as Element);
+
+    elements.forEach((el) => {
+      el.removeAttribute("style");
+      el.removeAttribute("class");
+      el.removeAttribute("color");
+      el.removeAttribute("face");
+      el.removeAttribute("size");
+      el.removeAttribute("bgcolor");
+      el.removeAttribute("align");
+      if (el.tagName === "FONT" || el.tagName === "SPAN") {
+        const parent = el.parentNode;
+        if (parent) {
+          while (el.firstChild) parent.insertBefore(el.firstChild, el);
+          parent.removeChild(el);
+        }
+      }
+    });
+
+    // Wrap body content in a span with ABNT font styling
+    const cleaned = doc.body.innerHTML;
+    return `<span style="${ABNT_FONT_STYLE}">${cleaned}</span>`;
+  } catch {
+    return html;
+  }
+}
+
 function DocumentPage() {
   const { id } = Route.useParams();
   const { user, loading } = useAuth();
