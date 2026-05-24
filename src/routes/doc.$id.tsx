@@ -155,6 +155,7 @@ function DocumentPage() {
 
 const A4_WIDTH = 794;
 const A4_HEIGHT = 1123;
+const A4_PAGE_GAP = 32;
 
 function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<typeof useEditor> }) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -193,17 +194,41 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       const paddingBottom = parseFloat(styles.paddingBottom) || 0;
       const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
 
-      breaks.forEach((pageBreak) => {
-        pageBreak.style.setProperty("--docpro-page-break-height", "0px");
+      Array.from(prose.children).forEach((child) => {
+        if (!(child instanceof HTMLElement)) return;
+        const originalMarginTop = child.dataset.docproOriginalMarginTop;
+        if (originalMarginTop !== undefined) child.style.marginTop = originalMarginTop;
+        delete child.dataset.docproOriginalMarginTop;
+        if (child.classList.contains("docpro-page-break")) {
+          child.style.setProperty("--docpro-page-break-height", "0px");
+        }
       });
 
       breaks.forEach((pageBreak) => {
         const y = pageBreak.offsetTop;
         const absoluteY = paddingTop + y;
-        const pageIndex = Math.floor(Math.max(0, absoluteY - 1) / A4_HEIGHT);
-        const nextPageContentTop = (pageIndex + 1) * A4_HEIGHT + paddingTop;
+        const pageIndex = Math.floor(Math.max(0, absoluteY - 1) / (A4_HEIGHT + A4_PAGE_GAP));
+        const nextPageContentTop = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
         const height = Math.max(40, nextPageContentTop - absoluteY);
         pageBreak.style.setProperty("--docpro-page-break-height", `${height}px`);
+      });
+
+      Array.from(prose.children).forEach((child) => {
+        if (!(child instanceof HTMLElement) || child.classList.contains("docpro-page-break")) return;
+        const childStyles = window.getComputedStyle(child);
+        const marginTop = parseFloat(childStyles.marginTop) || 0;
+        const marginBottom = parseFloat(childStyles.marginBottom) || 0;
+        const y = paddingTop + child.offsetTop;
+        const bottom = y + child.offsetHeight + marginBottom;
+        const pageIndex = Math.floor(Math.max(0, y) / (A4_HEIGHT + A4_PAGE_GAP));
+        const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
+        const usablePageHeight = A4_HEIGHT - paddingTop - paddingBottom;
+
+        if (y < pageBottom && bottom > pageBottom && child.offsetHeight < usablePageHeight) {
+          const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+          child.dataset.docproOriginalMarginTop = child.style.marginTop;
+          child.style.marginTop = `${marginTop + Math.max(0, nextPageY - y)}px`;
+        }
       });
 
       const contentBottom = Array.from(prose.children).reduce((bottom, child) => {
@@ -213,7 +238,7 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         return Math.max(bottom, child.offsetTop + child.offsetHeight + marginBottom);
       }, 0);
       const measuredHeight = paddingTop + contentBottom + paddingBottom;
-      const pages = Math.max(1, Math.ceil(measuredHeight / A4_HEIGHT));
+      const pages = Math.max(1, Math.floor(Math.max(0, measuredHeight - 1) / (A4_HEIGHT + A4_PAGE_GAP)) + 1);
       setPageCount((current) => (current === pages ? current : pages));
     };
 
@@ -246,7 +271,8 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
     };
   }, [editor, abntMode]);
 
-  const contentHeight = pageCount * A4_HEIGHT;
+  const pageStride = A4_HEIGHT + A4_PAGE_GAP;
+  const contentHeight = pageCount * A4_HEIGHT + Math.max(0, pageCount - 1) * A4_PAGE_GAP;
 
   return (
     <div className="px-4 py-8 sm:px-6" ref={wrapRef}>
@@ -266,7 +292,7 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
               key={index}
               aria-hidden="true"
               className="pointer-events-none absolute left-0 w-full rounded-sm bg-page shadow-md ring-1 ring-border"
-              style={{ top: index * A4_HEIGHT, height: A4_HEIGHT }}
+              style={{ top: index * pageStride, height: A4_HEIGHT }}
             />
           ))}
           <div
