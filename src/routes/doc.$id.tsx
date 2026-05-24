@@ -238,7 +238,7 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         return Math.max(bottom, child.offsetTop + child.offsetHeight + marginBottom);
       }, 0);
       const measuredHeight = paddingTop + contentBottom + paddingBottom;
-      const pages = Math.max(1, Math.ceil(measuredHeight / A4_HEIGHT));
+      const pages = Math.max(1, Math.floor(Math.max(0, measuredHeight - 1) / (A4_HEIGHT + A4_PAGE_GAP)) + 1);
       setPageCount((current) => (current === pages ? current : pages));
     };
 
