@@ -55,12 +55,18 @@ function DocumentPage() {
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] } }),
       Underline,
-      LinkExt.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" } }),
+      LinkExt.configure({
+        openOnClick: false,
+        autolink: true,
+        HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
+      }),
       ResizableImage,
       Placeholder.configure({ placeholder: "Comece a escrever..." }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Table.configure({ resizable: true }),
-      TableRow, TableHeader, TableCell,
+      TableRow,
+      TableHeader,
+      TableCell,
       TableFormulas,
       FontSize,
       PageBreak,
@@ -74,8 +80,16 @@ function DocumentPage() {
   useEffect(() => {
     if (!user || !editor) return;
     (async () => {
-      const { data, error } = await supabase.from("documents").select("*").eq("id", id).maybeSingle();
-      if (error || !data) { toast.error("Documento não encontrado"); navigate({ to: "/dashboard" }); return; }
+      const { data, error } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (error || !data) {
+        toast.error("Documento não encontrado");
+        navigate({ to: "/dashboard" });
+        return;
+      }
       setTitle(data.title);
       const json = data.content as any;
       const isEmptyJson = !json || (json?.content?.length === 1 && !json.content[0]?.content);
@@ -103,8 +117,13 @@ function DocumentPage() {
       .from("documents")
       .update({ title, content: editor.getJSON() as any, content_html: editor.getHTML() })
       .eq("id", id);
-    if (error) { setStatus("error"); toast.error("Erro ao salvar"); }
-    else { setStatus("saved"); setSavedAt(new Date()); }
+    if (error) {
+      setStatus("error");
+      toast.error("Erro ao salvar");
+    } else {
+      setStatus("saved");
+      setSavedAt(new Date());
+    }
   };
 
   const snapshotHistory = async () => {
@@ -117,10 +136,16 @@ function DocumentPage() {
   };
 
   // Save on title change
-  useEffect(() => { if (docLoaded) scheduleSave(); /* eslint-disable-next-line */ }, [title]);
+  useEffect(() => {
+    if (docLoaded) scheduleSave(); /* eslint-disable-next-line */
+  }, [title]);
 
   if (loading || !user) {
-    return <div className="grid min-h-screen place-items-center bg-canvas"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+    return (
+      <div className="grid min-h-screen place-items-center bg-canvas">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
   }
 
   return (
@@ -138,9 +163,22 @@ function DocumentPage() {
           className="min-w-0 max-w-md flex-1 rounded-md bg-transparent px-2 py-1 text-sm font-medium outline-none transition focus:bg-accent"
         />
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-          {status === "saving" && (<><Cloud className="h-3.5 w-3.5 animate-pulse" /> Salvando...</>)}
-          {status === "saved" && (<><Check className="h-3.5 w-3.5 text-primary" /> Salvo {savedAt ? savedAt.toLocaleTimeString() : ""}</>)}
-          {status === "error" && (<><CloudOff className="h-3.5 w-3.5 text-destructive" /> Erro ao salvar</>)}
+          {status === "saving" && (
+            <>
+              <Cloud className="h-3.5 w-3.5 animate-pulse" /> Salvando...
+            </>
+          )}
+          {status === "saved" && (
+            <>
+              <Check className="h-3.5 w-3.5 text-primary" /> Salvo{" "}
+              {savedAt ? savedAt.toLocaleTimeString() : ""}
+            </>
+          )}
+          {status === "error" && (
+            <>
+              <CloudOff className="h-3.5 w-3.5 text-destructive" /> Erro ao salvar
+            </>
+          )}
         </div>
       </header>
 
@@ -148,8 +186,21 @@ function DocumentPage() {
         <DocumentsSidebar currentId={id} userId={user.id} />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <EditorToolbar editor={editor} title={title} abntMode={abntMode} onAbntChange={setAbntMode} />
-          <div className="flex-1 overflow-auto overscroll-contain" style={{ touchAction: "pan-y pinch-zoom", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
+          <EditorToolbar
+            editor={editor}
+            title={title}
+            abntMode={abntMode}
+            onAbntChange={setAbntMode}
+          />
+          <div
+            className="flex-1 overflow-auto overscroll-contain"
+            style={
+              {
+                touchAction: "pan-y pinch-zoom",
+                WebkitOverflowScrolling: "touch",
+              } as React.CSSProperties
+            }
+          >
             <DocPage abntMode={abntMode} editor={editor} />
           </div>
         </div>
@@ -202,7 +253,9 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       const paddingBottom = parseFloat(styles.paddingBottom) || 0;
       const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
 
-      const existingBreaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-auto-page-break"));
+      const existingBreaks = Array.from(
+        prose.querySelectorAll<HTMLElement>(".docpro-auto-page-break"),
+      );
       existingBreaks.forEach((breakEl) => {
         breakEl.style.setProperty("--docpro-auto-page-break-height", "0px");
       });
@@ -224,8 +277,9 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       });
 
       const autoBreaks: PaginationBreakSpec[] = [];
-      const textBlocks = Array.from(prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, blockquote, pre"))
-        .filter((block) => !block.closest(".docpro-page-break"));
+      const textBlocks = Array.from(
+        prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, blockquote, pre"),
+      ).filter((block) => !block.closest(".docpro-page-break"));
 
       textBlocks.forEach((block) => {
         const range = document.createRange();
@@ -252,7 +306,10 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
           const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
 
           if (lineBottom > pageBottom) {
-            const result = editor.view.posAtCoords({ left: currentLine.left + 1, top: currentLine.top + 1 });
+            const result = editor.view.posAtCoords({
+              left: currentLine.left + 1,
+              top: currentLine.top + 1,
+            });
             if (!result) continue;
             const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
             const height = Math.max(0, nextPageY - lineTop);
@@ -276,7 +333,10 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         return Math.max(bottom, child.offsetTop + child.offsetHeight + marginBottom);
       }, 0);
       const measuredHeight = paddingTop + contentBottom + paddingBottom;
-      const pages = Math.max(1, Math.floor(Math.max(0, measuredHeight - 1) / (A4_HEIGHT + A4_PAGE_GAP)) + 1);
+      const pages = Math.max(
+        1,
+        Math.floor(Math.max(0, measuredHeight - 1) / (A4_HEIGHT + A4_PAGE_GAP)) + 1,
+      );
       setPageCount((current) => (current === pages ? current : pages));
     };
 
@@ -348,4 +408,3 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
     </div>
   );
 }
-

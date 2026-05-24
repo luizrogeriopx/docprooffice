@@ -69,8 +69,8 @@
   --ring: oklch(0.52 0.18 255);
 
   /* Editor surfaces */
-  --canvas: oklch(0.95 0.003 260);          /* gray editor backdrop */
-  --page: oklch(1 0 0);                      /* white A4 page */
+  --canvas: oklch(0.95 0.003 260); /* gray editor backdrop */
+  --page: oklch(1 0 0); /* white A4 page */
   --toolbar: oklch(0.99 0 0);
   --toolbar-foreground: oklch(0.22 0.01 260);
 
@@ -80,12 +80,25 @@
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
-  html, body, #root { height: 100%; }
+  * {
+    border-color: var(--color-border);
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family:
+      "Inter",
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 }
@@ -99,21 +112,81 @@
   line-height: 1.5;
   color: oklch(0.2 0.01 260);
 }
-.docpro-editor .ProseMirror p { margin: 0 0 0.5em; }
-.docpro-editor .ProseMirror h1 { font-size: 2em; font-weight: 700; margin: 0.6em 0 0.3em; }
-.docpro-editor .ProseMirror h2 { font-size: 1.6em; font-weight: 700; margin: 0.6em 0 0.3em; }
-.docpro-editor .ProseMirror h3 { font-size: 1.3em; font-weight: 700; margin: 0.6em 0 0.3em; }
-.docpro-editor .ProseMirror h4 { font-size: 1.15em; font-weight: 700; margin: 0.6em 0 0.3em; }
-.docpro-editor .ProseMirror h5 { font-size: 1em;  font-weight: 700; margin: 0.6em 0 0.3em; }
-.docpro-editor .ProseMirror h6 { font-size: 0.9em; font-weight: 700; margin: 0.6em 0 0.3em; text-transform: uppercase; letter-spacing: 0.04em; }
-.docpro-editor .ProseMirror ul { list-style: disc; padding-left: 1.5em; margin: 0.4em 0; }
-.docpro-editor .ProseMirror ol { list-style: decimal; padding-left: 1.5em; margin: 0.4em 0; }
-.docpro-editor .ProseMirror a { color: var(--primary); text-decoration: underline; }
-.docpro-editor .ProseMirror img { height: auto; border-radius: 4px; }
-.docpro-editor .ProseMirror table { border-collapse: collapse; margin: 0.5em 0; width: 100%; table-layout: fixed; }
-.docpro-editor .ProseMirror th, .docpro-editor .ProseMirror td { border: 1px solid oklch(0.86 0.005 260); padding: 6px 8px; vertical-align: top; }
-.docpro-editor .ProseMirror th { background: oklch(0.96 0.005 260); font-weight: 600; }
-.docpro-editor .ProseMirror blockquote { border-left: 3px solid var(--primary); padding-left: 1em; color: var(--muted-foreground); margin: 0.5em 0; }
+.docpro-editor .ProseMirror p {
+  margin: 0 0 0.5em;
+}
+.docpro-editor .ProseMirror h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+}
+.docpro-editor .ProseMirror h2 {
+  font-size: 1.6em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+}
+.docpro-editor .ProseMirror h3 {
+  font-size: 1.3em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+}
+.docpro-editor .ProseMirror h4 {
+  font-size: 1.15em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+}
+.docpro-editor .ProseMirror h5 {
+  font-size: 1em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+}
+.docpro-editor .ProseMirror h6 {
+  font-size: 0.9em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.docpro-editor .ProseMirror ul {
+  list-style: disc;
+  padding-left: 1.5em;
+  margin: 0.4em 0;
+}
+.docpro-editor .ProseMirror ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+  margin: 0.4em 0;
+}
+.docpro-editor .ProseMirror a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.docpro-editor .ProseMirror img {
+  height: auto;
+  border-radius: 4px;
+}
+.docpro-editor .ProseMirror table {
+  border-collapse: collapse;
+  margin: 0.5em 0;
+  width: 100%;
+  table-layout: fixed;
+}
+.docpro-editor .ProseMirror th,
+.docpro-editor .ProseMirror td {
+  border: 1px solid oklch(0.86 0.005 260);
+  padding: 6px 8px;
+  vertical-align: top;
+}
+.docpro-editor .ProseMirror th {
+  background: oklch(0.96 0.005 260);
+  font-weight: 600;
+}
+.docpro-editor .ProseMirror blockquote {
+  border-left: 3px solid var(--primary);
+  padding-left: 1em;
+  color: var(--muted-foreground);
+  margin: 0.5em 0;
+}
 .docpro-editor .ProseMirror p.is-editor-empty:first-child::before {
   color: oklch(0.7 0.01 260);
   content: attr(data-placeholder);
@@ -123,8 +196,12 @@
 }
 
 /* Resizable image NodeView */
-.docpro-page-content { position: relative; }
-.docpro-editor .ProseMirror .resizable-image-wrap { line-height: 0; }
+.docpro-page-content {
+  position: relative;
+}
+.docpro-editor .ProseMirror .resizable-image-wrap {
+  line-height: 0;
+}
 .docpro-editor .ProseMirror .docpro-image-frame {
   position: relative;
   display: inline-block;
@@ -151,7 +228,7 @@
   border-radius: 4px;
   cursor: nwse-resize;
   z-index: 30;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 .docpro-image-toolbar {
   position: absolute;
@@ -165,7 +242,7 @@
   color: var(--popover-foreground);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   z-index: 40;
   white-space: nowrap;
 }
@@ -179,8 +256,13 @@
   cursor: pointer;
   color: var(--popover-foreground);
 }
-.docpro-image-toolbar-btn:hover { background: var(--accent); }
-.docpro-image-toolbar-btn.is-active { background: var(--accent); color: var(--primary); }
+.docpro-image-toolbar-btn:hover {
+  background: var(--accent);
+}
+.docpro-image-toolbar-btn.is-active {
+  background: var(--accent);
+  color: var(--primary);
+}
 .docpro-image-toolbar-sep {
   width: 1px;
   height: 18px;
@@ -252,21 +334,47 @@
   font-weight: 700;
   margin: 1em 0 0.5em;
 }
-.docpro-editor.abnt .ProseMirror h1 { font-size: 12pt; }
-.docpro-editor.abnt .ProseMirror h2 { font-size: 12pt; font-weight: 700; text-transform: none; }
-.docpro-editor.abnt .ProseMirror h3 { font-size: 12pt; font-weight: 700; font-style: italic; text-transform: none; }
-.docpro-editor.abnt .ProseMirror h4 { font-size: 12pt; font-weight: 400; text-transform: none; }
-.docpro-editor.abnt .ProseMirror h5 { font-size: 12pt; font-weight: 400; font-style: italic; text-transform: none; }
-.docpro-editor.abnt .ProseMirror h6 { font-size: 12pt; font-weight: 400; text-transform: none; }
+.docpro-editor.abnt .ProseMirror h1 {
+  font-size: 12pt;
+}
+.docpro-editor.abnt .ProseMirror h2 {
+  font-size: 12pt;
+  font-weight: 700;
+  text-transform: none;
+}
+.docpro-editor.abnt .ProseMirror h3 {
+  font-size: 12pt;
+  font-weight: 700;
+  font-style: italic;
+  text-transform: none;
+}
+.docpro-editor.abnt .ProseMirror h4 {
+  font-size: 12pt;
+  font-weight: 400;
+  text-transform: none;
+}
+.docpro-editor.abnt .ProseMirror h5 {
+  font-size: 12pt;
+  font-weight: 400;
+  font-style: italic;
+  text-transform: none;
+}
+.docpro-editor.abnt .ProseMirror h6 {
+  font-size: 12pt;
+  font-weight: 400;
+  text-transform: none;
+}
 .docpro-editor.abnt .ProseMirror blockquote {
   margin-left: 4cm;
   font-size: 10pt;
-  line-height: 1.0;
+  line-height: 1;
   border-left: none;
   color: #000;
   text-indent: 0;
 }
-.docpro-editor.abnt .ProseMirror blockquote p { text-indent: 0; }
+.docpro-editor.abnt .ProseMirror blockquote p {
+  text-indent: 0;
+}
 
 /* ABNT margins applied to the page wrapper */
 .docpro-page-content.abnt-page {
@@ -288,7 +396,7 @@
 .docpro-editor.abnt-references .ProseMirror p {
   text-align: left;
   text-indent: 0;
-  line-height: 1.0;
+  line-height: 1;
   margin: 0 0 0.5em;
 }
 
@@ -313,12 +421,7 @@
   height: var(--docpro-page-break-height, 40px);
   margin: 24px -96px;
   background:
-    repeating-linear-gradient(
-      to right,
-      var(--canvas) 0 8px,
-      transparent 8px 16px
-    ),
-    var(--canvas);
+    repeating-linear-gradient(to right, var(--canvas) 0 8px, transparent 8px 16px), var(--canvas);
   border-top: 1px solid oklch(0.86 0.005 260);
   border-bottom: 1px solid oklch(0.86 0.005 260);
   position: relative;
@@ -354,6 +457,7 @@
     height: 0;
     margin: 0;
   }
-  .docpro-editor .ProseMirror .docpro-page-break::after { display: none; }
+  .docpro-editor .ProseMirror .docpro-page-break::after {
+    display: none;
+  }
 }
-
