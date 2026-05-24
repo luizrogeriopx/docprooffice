@@ -14,6 +14,12 @@ import { TableHeader } from "@tiptap/extension-table-header";
 import { TableFormulas } from "@/components/editor/TableFormulas";
 import { FontSize } from "@/components/editor/FontSize";
 import { PageBreak } from "@/components/editor/PageBreak";
+import {
+  PaginationBreaks,
+  paginationBreaksSignature,
+  setPaginationBreaks,
+  type PaginationBreakSpec,
+} from "@/components/editor/PaginationBreaks";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -58,6 +64,7 @@ function DocumentPage() {
       TableFormulas,
       FontSize,
       PageBreak,
+      PaginationBreaks,
     ],
     content: "",
     onUpdate: () => scheduleSave(),
