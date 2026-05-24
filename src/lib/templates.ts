@@ -12,27 +12,28 @@ const today = () => new Date().toLocaleDateString("pt-BR");
 
 export const TEMPLATES: Record<TemplateKey, string> = {
   resume: `
-    <h1 style="text-align:center">Seu Nome Completo</h1>
-    <p style="text-align:center"><strong>Cargo desejado</strong></p>
-    <p style="text-align:center">São Paulo, SP · (11) 99999-9999 · seu.email@exemplo.com · linkedin.com/in/seunome</p>
-    <h2>Resumo Profissional</h2>
+    <h1 style="margin-bottom:4px">Seu Nome Completo</h1>
+    <p style="margin-top:0;font-size:14pt;color:#475569"><strong>Cargo desejado</strong></p>
+    <p style="color:#64748b;font-size:10pt">São Paulo, SP &nbsp;·&nbsp; (11) 99999-9999 &nbsp;·&nbsp; seu.email@exemplo.com &nbsp;·&nbsp; linkedin.com/in/seunome</p>
+    <hr/>
+    <h2>Perfil</h2>
     <p>Profissional com X anos de experiência em [área], com sólida atuação em [principais competências]. Comprometido com resultados, trabalho em equipe e aprendizado contínuo.</p>
-    <h2>Experiência Profissional</h2>
-    <h3>Cargo — Empresa</h3>
-    <p><em>jan/2022 — Atual · São Paulo, SP</em></p>
+    <h2>Experiência</h2>
+    <h3>Cargo · Empresa</h3>
+    <p style="color:#64748b;font-size:10pt;margin-top:-4px">jan/2022 — Atual &nbsp;·&nbsp; São Paulo, SP</p>
     <ul>
       <li>Principal responsabilidade ou conquista mensurável.</li>
       <li>Outra responsabilidade relevante com impacto no negócio.</li>
       <li>Projeto de destaque com resultado quantitativo.</li>
     </ul>
-    <h3>Cargo Anterior — Empresa</h3>
-    <p><em>mar/2019 — dez/2021 · São Paulo, SP</em></p>
+    <h3>Cargo Anterior · Empresa</h3>
+    <p style="color:#64748b;font-size:10pt;margin-top:-4px">mar/2019 — dez/2021 &nbsp;·&nbsp; São Paulo, SP</p>
     <ul>
       <li>Descrição da responsabilidade principal.</li>
       <li>Conquista relevante.</li>
     </ul>
-    <h2>Formação Acadêmica</h2>
-    <p><strong>Bacharelado em [Curso]</strong> — Universidade XYZ (2015 — 2019)</p>
+    <h2>Formação</h2>
+    <p><strong>Bacharelado em [Curso]</strong> — Universidade XYZ <span style="color:#64748b">(2015 — 2019)</span></p>
     <h2>Habilidades</h2>
     <ul>
       <li>Habilidade técnica 1</li>
