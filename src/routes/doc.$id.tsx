@@ -374,7 +374,15 @@ function getBlockDocumentPosition(view: EditorView, block: HTMLElement): number 
   return found;
 }
 
-function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<typeof useEditor> }) {
+function DocPage({
+  abntMode,
+  editor,
+  pageSettings,
+}: {
+  abntMode: string;
+  editor: ReturnType<typeof useEditor>;
+  pageSettings: PageSettings;
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
