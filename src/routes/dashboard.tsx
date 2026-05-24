@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { FileText, Plus, Search, Trash2, LogOut, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { NewDocumentDialog } from "@/components/dashboard/NewDocumentDialog";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -21,7 +22,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const [docs, setDocs] = useState<Doc[]>([]);
   const [q, setQ] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
