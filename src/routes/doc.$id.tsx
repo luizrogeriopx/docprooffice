@@ -155,6 +155,7 @@ function DocumentPage() {
 
 const A4_WIDTH = 794;
 const A4_HEIGHT = 1123;
+const A4_PAGE_GAP = 32;
 
 function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<typeof useEditor> }) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -246,7 +247,8 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
     };
   }, [editor, abntMode]);
 
-  const contentHeight = pageCount * A4_HEIGHT;
+  const pageStride = A4_HEIGHT + A4_PAGE_GAP;
+  const contentHeight = pageCount * A4_HEIGHT + Math.max(0, pageCount - 1) * A4_PAGE_GAP;
 
   return (
     <div className="px-4 py-8 sm:px-6" ref={wrapRef}>
@@ -266,7 +268,7 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
               key={index}
               aria-hidden="true"
               className="pointer-events-none absolute left-0 w-full rounded-sm bg-page shadow-md ring-1 ring-border"
-              style={{ top: index * A4_HEIGHT, height: A4_HEIGHT }}
+              style={{ top: index * pageStride, height: A4_HEIGHT }}
             />
           ))}
           <div
