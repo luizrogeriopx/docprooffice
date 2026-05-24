@@ -113,6 +113,8 @@ function DocumentPage() {
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [docLoaded, setDocLoaded] = useState(false);
   const [abntMode, setAbntMode] = useState<string>(""); // "", "abnt", "abnt abnt-arial", "abnt abnt-references", "abnt abnt-cover"
+  const [pageSettings, setPageSettings] = useState<PageSettings>(DEFAULT_PAGE_SETTINGS);
+  const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
