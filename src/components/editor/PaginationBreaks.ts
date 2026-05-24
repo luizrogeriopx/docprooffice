@@ -36,6 +36,7 @@ export const PaginationBreaks = Extension.create({
                   () => {
                     const element = document.createElement("span");
                     element.className = "docpro-auto-page-break";
+                    element.setAttribute("data-docpro-auto-page-break", "true");
                     element.style.setProperty("--docpro-auto-page-break-height", `${Math.max(0, item.height)}px`);
                     return element;
                   },
