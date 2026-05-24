@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { FileText, Plus, Search, Trash2, LogOut, Loader2, Share2, Mail, MessageCircle, HardDrive } from "lucide-react";
+import { FileText, Plus, Search, Trash2, LogOut, Loader2, Share2, Mail, MessageCircle, HardDrive, Briefcase } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { NewDocumentDialog } from "@/components/dashboard/NewDocumentDialog";
@@ -147,38 +147,44 @@ function Dashboard() {
                     </div>
                   </div>
                 </Link>
-                <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition group-hover:opacity-100">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        className="grid h-8 w-8 place-items-center rounded-md bg-background/80 hover:bg-accent"
-                        aria-label="Compartilhar"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Share2 className="h-4 w-4" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenuLabel>Compartilhar</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => shareWhatsApp(d, false)}>
-                        <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => shareWhatsApp(d, true)}>
-                        <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp Business
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => shareEmail(d)}>
-                        <Mail className="mr-2 h-4 w-4" /> E-mail
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => shareDrive(d)}>
-                        <HardDrive className="mr-2 h-4 w-4" /> Google Drive
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                <div className="absolute right-2 top-2 flex flex-wrap justify-end gap-1 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
                   <button
-                    onClick={() => remove(d.id)}
-                    className="grid h-8 w-8 place-items-center rounded-md bg-background/80 transition hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={(e) => { e.stopPropagation(); shareWhatsApp(d, false); }}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-background/90 shadow-sm hover:bg-accent"
+                    aria-label="Compartilhar no WhatsApp"
+                    title="WhatsApp"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); shareWhatsApp(d, true); }}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-background/90 shadow-sm hover:bg-accent"
+                    aria-label="Compartilhar no WhatsApp Business"
+                    title="WhatsApp Business"
+                  >
+                    <Briefcase className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); shareEmail(d); }}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-background/90 shadow-sm hover:bg-accent"
+                    aria-label="Compartilhar por e-mail"
+                    title="E-mail"
+                  >
+                    <Mail className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); shareDrive(d); }}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-background/90 shadow-sm hover:bg-accent"
+                    aria-label="Compartilhar no Google Drive"
+                    title="Google Drive"
+                  >
+                    <HardDrive className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); remove(d.id); }}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-background/90 shadow-sm transition hover:bg-destructive hover:text-destructive-foreground"
                     aria-label="Excluir"
+                    title="Excluir"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
