@@ -416,6 +416,9 @@
   margin: 0 -96px;
   pointer-events: none;
 }
+.docpro-editor .ProseMirror.docpro-measuring-pagination .docpro-auto-page-break {
+  display: none;
+}
 .docpro-editor .ProseMirror .docpro-page-break {
   display: block;
   height: var(--docpro-page-break-height, 40px);
