@@ -49,7 +49,7 @@ const Btn = ({ active, onClick, children, label }: { active?: boolean; onClick: 
   </Button>
 );
 
-export function EditorToolbar({ editor, title }: Props) {
+export function EditorToolbar({ editor, title, abntMode = "", onAbntChange }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   if (!editor) return null;
 
