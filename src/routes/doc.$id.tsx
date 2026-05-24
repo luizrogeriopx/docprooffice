@@ -13,6 +13,7 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TableFormulas } from "@/components/editor/TableFormulas";
 import { FontSize } from "@/components/editor/FontSize";
+import { PageBreak } from "@/components/editor/PageBreak";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -56,6 +57,7 @@ function DocumentPage() {
       TableRow, TableHeader, TableCell,
       TableFormulas,
       FontSize,
+      PageBreak,
     ],
     content: "",
     onUpdate: () => scheduleSave(),
@@ -140,7 +142,7 @@ function DocumentPage() {
 
         <div className="flex min-w-0 flex-1 flex-col">
           <EditorToolbar editor={editor} title={title} abntMode={abntMode} onAbntChange={setAbntMode} />
-          <div className="flex-1 overflow-auto" style={{ touchAction: "pinch-zoom" }}>
+          <div className="flex-1 overflow-auto overscroll-contain" style={{ touchAction: "pan-y pinch-zoom", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
             <DocPage abntMode={abntMode} editor={editor} />
           </div>
         </div>
@@ -151,9 +153,14 @@ function DocumentPage() {
   );
 }
 
+const A4_WIDTH = 794;
+const A4_HEIGHT = 1123;
+
 function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<typeof useEditor> }) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [contentHeight, setContentHeight] = useState(A4_HEIGHT);
 
   useEffect(() => {
     const compute = () => {
@@ -162,23 +169,34 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       const styles = window.getComputedStyle(el);
       const horizontalPadding = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
       const available = el.clientWidth - horizontalPadding;
-      setScale(Math.min(1, Math.max(0, available) / 816));
+      setScale(Math.min(1, Math.max(0, available) / A4_WIDTH));
     };
     compute();
     window.addEventListener("resize", compute);
     return () => window.removeEventListener("resize", compute);
   }, []);
 
+  useEffect(() => {
+    const el = pageRef.current;
+    if (!el) return;
+    const update = () => setContentHeight(Math.max(A4_HEIGHT, el.offsetHeight));
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [editor]);
+
   return (
     <div className="px-4 py-8 sm:px-6" ref={wrapRef}>
-      <div style={{ width: 816 * scale, height: 1056 * scale, marginInline: "auto" }}>
+      <div style={{ width: A4_WIDTH * scale, height: contentHeight * scale, marginInline: "auto" }}>
         <div
+          ref={pageRef}
           className={`docpro-editor rounded-sm bg-page shadow-md ring-1 ring-black/5 ${abntMode}`}
-          style={{ width: 816, transform: `scale(${scale})`, transformOrigin: "top left" }}
+          style={{ width: A4_WIDTH, transform: `scale(${scale})`, transformOrigin: "top left" }}
         >
           <div
             className={`docpro-page-content px-[96px] py-[96px] ${abntMode ? "abnt-page" : ""}`}
-            style={{ minHeight: 1056, width: 816 }}
+            style={{ minHeight: A4_HEIGHT, width: A4_WIDTH }}
           >
             <EditorContent editor={editor} />
           </div>
@@ -188,3 +206,4 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
     </div>
   );
 }
+

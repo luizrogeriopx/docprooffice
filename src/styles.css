@@ -300,3 +300,51 @@
   text-indent: 0;
   text-transform: uppercase;
 }
+
+/* ============ Quebra de página A4 ============ */
+.docpro-editor .ProseMirror .docpro-page-break {
+  display: block;
+  height: 40px;
+  margin: 24px -96px;
+  background:
+    repeating-linear-gradient(
+      to right,
+      var(--canvas) 0 8px,
+      transparent 8px 16px
+    ),
+    var(--canvas);
+  border-top: 1px solid oklch(0.86 0.005 260);
+  border-bottom: 1px solid oklch(0.86 0.005 260);
+  position: relative;
+  break-after: page;
+  page-break-after: always;
+}
+.docpro-editor .ProseMirror .docpro-page-break::after {
+  content: "Quebra de página";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-foreground);
+  background: var(--canvas);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.docpro-editor .ProseMirror .docpro-page-break.ProseMirror-selectednode {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media print {
+  .docpro-editor .ProseMirror .docpro-page-break {
+    background: none;
+    border: none;
+    height: 0;
+    margin: 0;
+  }
+  .docpro-editor .ProseMirror .docpro-page-break::after { display: none; }
+}
+
