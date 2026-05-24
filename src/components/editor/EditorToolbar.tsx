@@ -20,7 +20,20 @@ import { toast } from "sonner";
 import { useRef } from "react";
 import { exportToPdf, exportToDocx } from "@/lib/export";
 
-interface Props { editor: Editor | null; title: string; }
+interface Props {
+  editor: Editor | null;
+  title: string;
+  abntMode?: string;
+  onAbntChange?: (mode: string) => void;
+}
+
+const ABNT_OPTIONS: { value: string; label: string; desc: string }[] = [
+  { value: "", label: "Sem formatação", desc: "Remove formatação ABNT" },
+  { value: "abnt", label: "ABNT — Times New Roman", desc: "Trabalho acadêmico padrão (fonte Times, 12pt, espaço 1,5, margens 3/2/2/3 cm)" },
+  { value: "abnt abnt-arial", label: "ABNT — Arial", desc: "Trabalho acadêmico (fonte Arial, 12pt, espaço 1,5)" },
+  { value: "abnt abnt-references", label: "ABNT — Referências", desc: "Alinhamento à esquerda, espaço simples, sem recuo" },
+  { value: "abnt abnt-cover", label: "ABNT — Capa", desc: "Tudo centralizado e em maiúsculas" },
+];
 
 const Btn = ({ active, onClick, children, label }: { active?: boolean; onClick: () => void; children: React.ReactNode; label: string }) => (
   <Button
