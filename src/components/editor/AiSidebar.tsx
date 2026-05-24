@@ -38,7 +38,7 @@ export function AiSidebar({ editor }: Props) {
   const [preview, setPreview] = useState<{ action: Action; result: string; from: number; to: number; append: boolean } | null>(null);
 
   const [messages, setMessages] = useState<ChatMsg[]>([
-    { role: "assistant", content: "Olá! Eu sou seu Copilot. Posso escrever, reescrever, traduzir, resumir ou responder dúvidas sobre o documento. Selecione um trecho ou peça algo novo." },
+    { role: "assistant", content: "Olá! Eu sou o Assistente. Posso escrever, reescrever, traduzir, resumir ou responder dúvidas sobre o documento. Selecione um trecho ou peça algo novo." },
   ]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -156,7 +156,7 @@ export function AiSidebar({ editor }: Props) {
     <aside className="hidden w-80 shrink-0 border-l bg-sidebar text-sidebar-foreground lg:flex lg:flex-col">
       <div className="flex items-center gap-2 border-b px-4 py-3">
         <Sparkles className="h-4 w-4 text-primary" />
-        <div className="text-sm font-semibold">Copilot</div>
+        <div className="text-sm font-semibold">Assistente</div>
         <Button size="sm" variant="ghost" className="ml-auto h-7 w-7 p-0" onClick={newChat} title="Nova conversa">
           <Plus className="h-4 w-4" />
         </Button>
@@ -235,7 +235,7 @@ export function AiSidebar({ editor }: Props) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Peça algo ao Copilot..."
+            placeholder="Peça algo ao Assistente..."
             rows={2}
             className="min-h-[44px] resize-none text-sm"
           />
