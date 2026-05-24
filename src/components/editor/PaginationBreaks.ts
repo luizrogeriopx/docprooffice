@@ -14,7 +14,12 @@ export function paginationBreaksSignature(breaks: PaginationBreakSpec[]) {
 }
 
 export function setPaginationBreaks(view: EditorView, breaks: PaginationBreakSpec[]) {
-  view.dispatch(view.state.tr.setMeta(paginationBreaksKey, breaks));
+  view.dispatch(
+    view.state.tr
+      .setMeta(paginationBreaksKey, breaks)
+      .setMeta("addToHistory", false)
+      .setMeta("preventUpdate", true),
+  );
 }
 
 export const PaginationBreaks = Extension.create({

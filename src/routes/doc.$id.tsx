@@ -352,6 +352,11 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
   const contentRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [pageCount, setPageCount] = useState(1);
+  const pageCountRef = useRef(1);
+
+  useEffect(() => {
+    pageCountRef.current = pageCount;
+  }, [pageCount]);
 
   useEffect(() => {
     const compute = () => {
@@ -372,110 +377,113 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
     if (!contentEl || !editor) return;
 
     let frame: number | null = null;
-    let observer: ResizeObserver | null = null;
     let previousSignature = "";
     let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
+    let isPaginating = false;
+    let lastDocSignature = "";
 
     const layout = () => {
-      const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
-      if (!prose) return;
-
-      // Disconnect observer temporarily to prevent resize loop during class toggling
-      if (observer) {
-        observer.disconnect();
-      }
-
-      const styles = window.getComputedStyle(contentEl);
-      const paddingTop = parseFloat(styles.paddingTop) || 0;
-      const paddingBottom = parseFloat(styles.paddingBottom) || 0;
-      const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
-      const proseRect = prose.getBoundingClientRect();
-      const renderedScale = prose.offsetWidth > 0 ? proseRect.width / prose.offsetWidth : scale;
-      const visualScale = renderedScale > 0 ? renderedScale : 1;
-
-      Array.from(prose.children).forEach((child) => {
-        if (!(child instanceof HTMLElement)) return;
-        if (child.classList.contains("docpro-page-break")) {
-          child.style.setProperty("--docpro-page-break-height", "0px");
-        }
-      });
-
-      breaks.forEach((pageBreak) => {
-        const y = pageBreak.offsetTop;
-        const absoluteY = paddingTop + y;
-        const pageIndex = Math.floor(Math.max(0, absoluteY - 1) / (A4_HEIGHT + A4_PAGE_GAP));
-        const nextPageContentTop = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-        const height = Math.max(40, nextPageContentTop - absoluteY);
-        pageBreak.style.setProperty("--docpro-page-break-height", `${height}px`);
-      });
-
-      const autoBreaks: PaginationBreakSpec[] = [];
-      const flowBlocks = Array.from(prose.children).filter(
-        (child): child is HTMLElement =>
-          child instanceof HTMLElement &&
-          !child.classList.contains("docpro-auto-page-break") &&
-          !child.classList.contains("docpro-page-break"),
-      );
-      let measuredBottom = paddingTop + paddingBottom;
-
-      prose.classList.add("docpro-measuring-pagination");
+      isPaginating = true;
       try {
-        let accumulatedShift = 0;
-        flowBlocks.forEach((block) => {
-          const blockRect = block.getBoundingClientRect();
-          const blockTop =
-            (blockRect.top - proseRect.top) / visualScale + paddingTop + accumulatedShift;
-          const blockBottom =
-            (blockRect.bottom - proseRect.top) / visualScale + paddingTop + accumulatedShift;
-          const pageIndex = Math.floor(Math.max(0, blockTop) / (A4_HEIGHT + A4_PAGE_GAP));
-          const pageTop = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-          const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
+        const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
+        if (!prose) return;
 
-          if (blockBottom > pageBottom && blockTop > pageTop + 1) {
-            const pos = getBlockDocumentPosition(editor.view, block);
-            const nextPageTop = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-            const height = Math.max(0, nextPageTop - blockTop);
-            if (pos !== null && height > 0) {
-              autoBreaks.push({ pos, height });
-              accumulatedShift += height;
-              measuredBottom = Math.max(measuredBottom, blockBottom + height + paddingBottom);
-              return;
-            }
+        const styles = window.getComputedStyle(contentEl);
+        const paddingTop = parseFloat(styles.paddingTop) || 0;
+        const paddingBottom = parseFloat(styles.paddingBottom) || 0;
+        const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
+        const proseRect = prose.getBoundingClientRect();
+        const renderedScale = prose.offsetWidth > 0 ? proseRect.width / prose.offsetWidth : scale;
+        const visualScale = renderedScale > 0 ? renderedScale : 1;
+
+        Array.from(prose.children).forEach((child) => {
+          if (!(child instanceof HTMLElement)) return;
+          if (child.classList.contains("docpro-page-break")) {
+            child.style.setProperty("--docpro-page-break-height", "0px");
           }
-
-          measuredBottom = Math.max(measuredBottom, blockBottom + paddingBottom);
         });
-      } finally {
-        prose.classList.remove("docpro-measuring-pagination");
-        // Reconnect observer
-        if (observer && prose) {
-          observer.observe(prose);
+
+        breaks.forEach((pageBreak) => {
+          const y = pageBreak.offsetTop;
+          const absoluteY = paddingTop + y;
+          const pageIndex = Math.floor(Math.max(0, absoluteY - 1) / (A4_HEIGHT + A4_PAGE_GAP));
+          const nextPageContentTop = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+          const height = Math.max(40, nextPageContentTop - absoluteY);
+          pageBreak.style.setProperty("--docpro-page-break-height", `${height}px`);
+        });
+
+        const autoBreaks: PaginationBreakSpec[] = [];
+        const flowBlocks = Array.from(prose.children).filter(
+          (child): child is HTMLElement =>
+            child instanceof HTMLElement &&
+            !child.classList.contains("docpro-auto-page-break") &&
+            !child.classList.contains("docpro-page-break"),
+        );
+        let measuredBottom = paddingTop + paddingBottom;
+
+        prose.classList.add("docpro-measuring-pagination");
+        try {
+          let accumulatedShift = 0;
+          flowBlocks.forEach((block) => {
+            const blockRect = block.getBoundingClientRect();
+            const blockTop =
+              (blockRect.top - proseRect.top) / visualScale + paddingTop + accumulatedShift;
+            const blockBottom =
+              (blockRect.bottom - proseRect.top) / visualScale + paddingTop + accumulatedShift;
+            const pageIndex = Math.floor(Math.max(0, blockTop) / (A4_HEIGHT + A4_PAGE_GAP));
+            const pageTop = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+            const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
+
+            if (blockBottom > pageBottom && blockTop > pageTop + 1) {
+              const pos = getBlockDocumentPosition(editor.view, block);
+              const nextPageTop = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+              const height = Math.max(0, nextPageTop - blockTop);
+              if (pos !== null && height > 0) {
+                autoBreaks.push({ pos, height });
+                accumulatedShift += height;
+                measuredBottom = Math.max(measuredBottom, blockBottom + height + paddingBottom);
+                return;
+              }
+            }
+
+            measuredBottom = Math.max(measuredBottom, blockBottom + paddingBottom);
+          });
+        } finally {
+          prose.classList.remove("docpro-measuring-pagination");
         }
+
+        autoBreaks.sort((a, b) => a.pos - b.pos || b.height - a.height);
+
+        const signature = paginationBreaksSignature(autoBreaks);
+        if (signature !== previousSignature) {
+          previousSignature = signature;
+          setPaginationBreaks(editor.view, autoBreaks);
+        }
+
+        const measuredHeight = measuredBottom;
+        const pages = Math.max(
+          1,
+          Math.floor(Math.max(0, measuredHeight - 1) / (A4_HEIGHT + A4_PAGE_GAP)) + 1,
+        );
+        if (pageCountRef.current !== pages) {
+          pageCountRef.current = pages;
+          setPageCount(pages);
+        }
+      } finally {
+        isPaginating = false;
       }
-
-      autoBreaks.sort((a, b) => a.pos - b.pos || b.height - a.height);
-
-      const signature = paginationBreaksSignature(autoBreaks);
-      if (signature !== previousSignature) {
-        previousSignature = signature;
-        setPaginationBreaks(editor.view, autoBreaks);
-        return;
-      }
-
-      const measuredHeight = measuredBottom;
-      const pages = Math.max(
-        1,
-        Math.floor(Math.max(0, measuredHeight - 1) / (A4_HEIGHT + A4_PAGE_GAP)) + 1,
-      );
-      setPageCount((current) => (current === pages ? current : pages));
     };
 
     const schedule = () => {
+      if (isPaginating) return;
+      const docSignature = `${editor.state.doc.content.size}:${editor.state.doc.childCount}:${abntMode}:${scale}`;
+      if (docSignature === lastDocSignature) return;
+      lastDocSignature = docSignature;
       if (frame !== null) cancelAnimationFrame(frame);
       if (debounceTimeout !== null) clearTimeout(debounceTimeout);
       debounceTimeout = setTimeout(() => {
         frame = requestAnimationFrame(layout);
-      }, 100);
+      }, 180);
     };
 
     schedule();
@@ -484,18 +492,9 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       editor.on("transaction", schedule);
     }
 
-    const attachObserver = () => {
-      const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
-      if (!prose) return;
-      observer = new ResizeObserver(schedule);
-      observer.observe(prose);
-    };
-    requestAnimationFrame(attachObserver);
-
     return () => {
       if (frame !== null) cancelAnimationFrame(frame);
       if (debounceTimeout !== null) clearTimeout(debounceTimeout);
-      observer?.disconnect();
       if (editor) {
         editor.off("update", schedule);
         editor.off("transaction", schedule);
