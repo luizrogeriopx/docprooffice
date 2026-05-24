@@ -464,3 +464,12 @@
     display: none;
   }
 }
+
+/* Mascarar o botão flutuante "Edit with Lovable" */
+#lovable-badge,
+.lovable-badge {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
