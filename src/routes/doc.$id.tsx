@@ -319,33 +319,62 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
             });
           });
         });
+
+        // 4. Calculate auto breaks while still in measuring state (hiding existing auto-page-breaks)
+        let accumulatedShift = 0;
+        visualLines
+          .sort((a, b) => a.docTop - b.docTop || a.docBottom - b.docBottom)
+          .forEach((currentLine) => {
+            const lineTop = currentLine.docTop + accumulatedShift;
+            const lineBottom = currentLine.docBottom + accumulatedShift;
+            const pageIndex = Math.floor(Math.max(0, lineTop) / (A4_HEIGHT + A4_PAGE_GAP));
+            const pageTop = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+            const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
+
+            if (pageIndex > 0 && lineTop < pageTop) {
+              const result = editor.view.posAtCoords({
+                left: currentLine.left + 1,
+                top: currentLine.top + 1,
+              });
+              if (!result) return;
+              const height = Math.max(0, pageTop - lineTop);
+              if (height > 0) {
+                const existingBreak = autoBreaks.find((b) => b.pos === result.pos);
+                if (existingBreak) {
+                  if (height > existingBreak.height) {
+                    accumulatedShift += height - existingBreak.height;
+                    existingBreak.height = height;
+                  }
+                } else {
+                  autoBreaks.push({ pos: result.pos, height });
+                  accumulatedShift += height;
+                }
+              }
+            } else if (lineBottom > pageBottom) {
+              const result = editor.view.posAtCoords({
+                left: currentLine.left + 1,
+                top: currentLine.top + 1,
+              });
+              if (!result) return;
+              const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+              const height = Math.max(0, nextPageY - lineTop);
+              if (height > 0) {
+                const existingBreak = autoBreaks.find((b) => b.pos === result.pos);
+                if (existingBreak) {
+                  if (height > existingBreak.height) {
+                    accumulatedShift += height - existingBreak.height;
+                    existingBreak.height = height;
+                  }
+                } else {
+                  autoBreaks.push({ pos: result.pos, height });
+                  accumulatedShift += height;
+                }
+              }
+            }
+          });
       } finally {
         prose.classList.remove("docpro-measuring-pagination");
       }
-
-      let accumulatedShift = 0;
-      visualLines
-        .sort((a, b) => a.docTop - b.docTop || a.docBottom - b.docBottom)
-        .forEach((currentLine) => {
-          const lineTop = currentLine.docTop + accumulatedShift;
-          const lineBottom = currentLine.docBottom + accumulatedShift;
-          const pageIndex = Math.floor(Math.max(0, lineTop) / (A4_HEIGHT + A4_PAGE_GAP));
-          const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
-
-          if (lineBottom > pageBottom) {
-            const result = editor.view.posAtCoords({
-              left: currentLine.left + 1,
-              top: currentLine.top + 1,
-            });
-            if (!result) return;
-            const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-            const height = Math.max(0, nextPageY - lineTop);
-            if (height > 0) {
-              autoBreaks.push({ pos: result.pos, height });
-              accumulatedShift += height;
-            }
-          }
-        });
 
       const signature = paginationBreaksSignature(autoBreaks);
       if (signature !== previousSignature) {
