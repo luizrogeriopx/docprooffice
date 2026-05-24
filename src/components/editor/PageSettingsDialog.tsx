@@ -212,6 +212,7 @@ export function PageSettingsDialog({ open, onOpenChange, value, onChange }: Prop
                     src={local.watermark.imageUrl}
                     alt="Marca d'água"
                     className="h-full w-full object-contain"
+                    style={{ opacity: local.watermark.enabled ? local.watermark.opacity : 1 }}
                   />
                 ) : (
                   <ImagePlus className="h-5 w-5 text-muted-foreground" />
