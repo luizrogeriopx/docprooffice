@@ -423,7 +423,8 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         let accumulatedShift = 0;
         flowBlocks.forEach((block) => {
           const blockRect = block.getBoundingClientRect();
-          const blockTop = (blockRect.top - proseRect.top) / visualScale + paddingTop + accumulatedShift;
+          const blockTop =
+            (blockRect.top - proseRect.top) / visualScale + paddingTop + accumulatedShift;
           const blockBottom =
             (blockRect.bottom - proseRect.top) / visualScale + paddingTop + accumulatedShift;
           const pageIndex = Math.floor(Math.max(0, blockTop) / (A4_HEIGHT + A4_PAGE_GAP));
@@ -443,7 +444,7 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
           }
 
           measuredBottom = Math.max(measuredBottom, blockBottom + paddingBottom);
-          });
+        });
       } finally {
         prose.classList.remove("docpro-measuring-pagination");
         // Reconnect observer
