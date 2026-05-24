@@ -35,6 +35,7 @@ function DocumentPage() {
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [docLoaded, setDocLoaded] = useState(false);
+  const [abntMode, setAbntMode] = useState<string>(""); // "", "abnt", "abnt abnt-arial", "abnt abnt-references", "abnt abnt-cover"
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
