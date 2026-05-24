@@ -352,6 +352,11 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
   const contentRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [pageCount, setPageCount] = useState(1);
+  const pageCountRef = useRef(1);
+
+  useEffect(() => {
+    pageCountRef.current = pageCount;
+  }, [pageCount]);
 
   useEffect(() => {
     const compute = () => {
