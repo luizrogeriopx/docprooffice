@@ -279,41 +279,41 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       prose.classList.add("docpro-measuring-pagination");
       try {
         textBlocks.forEach((block) => {
-        const range = document.createRange();
-        range.selectNodeContents(block);
-        const proseRect = prose.getBoundingClientRect();
-        const lineRects = Array.from(range.getClientRects())
-          .filter((rect) => rect.width > 0 && rect.height > 0)
-          .map((rect) => ({
-            left: rect.left,
-            top: rect.top,
-            docTop: rect.top - proseRect.top + paddingTop,
-            docBottom: rect.bottom - proseRect.top + paddingTop,
-          }));
-        range.detach();
+          const range = document.createRange();
+          range.selectNodeContents(block);
+          const proseRect = prose.getBoundingClientRect();
+          const lineRects = Array.from(range.getClientRects())
+            .filter((rect) => rect.width > 0 && rect.height > 0)
+            .map((rect) => ({
+              left: rect.left,
+              top: rect.top,
+              docTop: rect.top - proseRect.top + paddingTop,
+              docBottom: rect.bottom - proseRect.top + paddingTop,
+            }));
+          range.detach();
 
-        if (lineRects.length === 0) return;
+          if (lineRects.length === 0) return;
 
-        let accumulatedShift = 0;
-        for (let index = 0; index < lineRects.length; index += 1) {
-          const currentLine = lineRects[index];
-          const lineTop = currentLine.docTop + accumulatedShift;
-          const lineBottom = currentLine.docBottom + accumulatedShift;
-          const pageIndex = Math.floor(Math.max(0, lineTop) / (A4_HEIGHT + A4_PAGE_GAP));
-          const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
+          let accumulatedShift = 0;
+          for (let index = 0; index < lineRects.length; index += 1) {
+            const currentLine = lineRects[index];
+            const lineTop = currentLine.docTop + accumulatedShift;
+            const lineBottom = currentLine.docBottom + accumulatedShift;
+            const pageIndex = Math.floor(Math.max(0, lineTop) / (A4_HEIGHT + A4_PAGE_GAP));
+            const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
 
-          if (lineBottom > pageBottom) {
-            const result = editor.view.posAtCoords({
-              left: currentLine.left + 1,
-              top: currentLine.top + 1,
-            });
-            if (!result) continue;
-            const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-            const height = Math.max(0, nextPageY - lineTop);
-            autoBreaks.push({ pos: result.pos, height });
-            accumulatedShift += height;
+            if (lineBottom > pageBottom) {
+              const result = editor.view.posAtCoords({
+                left: currentLine.left + 1,
+                top: currentLine.top + 1,
+              });
+              if (!result) continue;
+              const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+              const height = Math.max(0, nextPageY - lineTop);
+              autoBreaks.push({ pos: result.pos, height });
+              accumulatedShift += height;
+            }
           }
-        }
         });
       } finally {
         prose.classList.remove("docpro-measuring-pagination");
