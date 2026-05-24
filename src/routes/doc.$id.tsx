@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
+import { DOMParser as ProseMirrorDOMParser } from "@tiptap/pm/model";
 import { EditorView } from "@tiptap/pm/view";
 import type { JSONContent } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
@@ -40,41 +41,51 @@ export const Route = createFileRoute("/doc/$id")({
 
 const ABNT_FONT_STYLE = "font-family: 'Times New Roman', Times, serif; font-size: 12pt;";
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatPlainTextAsAbntHtml(text: string): string {
+  const normalized = text.replace(/\r\n?/g, "\n").replace(/\u00a0/g, " ").trim();
+  if (!normalized) return "";
+
+  return normalized
+    .split(/\n{2,}/)
+    .map((block) => block.replace(/\n+/g, " ").replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .map((block) => `<p><span style="${ABNT_FONT_STYLE}">${escapeHtml(block)}</span></p>`)
+    .join("");
+}
+
+function extractPlainTextFromHtml(html: string): string {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+
+  doc.querySelectorAll("style, script, meta, link").forEach((node) => node.remove());
+  doc.querySelectorAll("br").forEach((node) => node.replaceWith(doc.createTextNode("\n")));
+  doc
+    .querySelectorAll("p, div, li, h1, h2, h3, h4, h5, h6, blockquote, pre, tr")
+    .forEach((node) => node.appendChild(doc.createTextNode("\n\n")));
+
+  return doc.body.textContent ?? "";
+}
+
+function insertAbntHtml(view: EditorView, html: string) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const slice = ProseMirrorDOMParser.fromSchema(view.state.schema).parseSlice(doc.body);
+  view.dispatch(view.state.tr.replaceSelection(slice).scrollIntoView());
+}
+
 function formatPastedHtmlAbnt(html: string): string {
   if (typeof window === "undefined" || !html) return html;
   try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
-
-    // Remove style/script/meta tags entirely
-    doc.querySelectorAll("style, script, meta, link").forEach((n) => n.remove());
-
-    // Strip class, style, color, face attributes; unwrap <font>
-    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT);
-    const elements: Element[] = [];
-    let node: Node | null;
-    while ((node = walker.nextNode())) elements.push(node as Element);
-
-    elements.forEach((el) => {
-      el.removeAttribute("style");
-      el.removeAttribute("class");
-      el.removeAttribute("color");
-      el.removeAttribute("face");
-      el.removeAttribute("size");
-      el.removeAttribute("bgcolor");
-      el.removeAttribute("align");
-      if (el.tagName === "FONT" || el.tagName === "SPAN") {
-        const parent = el.parentNode;
-        if (parent) {
-          while (el.firstChild) parent.insertBefore(el.firstChild, el);
-          parent.removeChild(el);
-        }
-      }
-    });
-
-    // Wrap body content in a span with ABNT font styling
-    const cleaned = doc.body.innerHTML;
-    return `<span style="${ABNT_FONT_STYLE}">${cleaned}</span>`;
+    return formatPlainTextAsAbntHtml(extractPlainTextFromHtml(html));
   } catch {
     return html;
   }
