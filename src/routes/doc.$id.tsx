@@ -277,7 +277,8 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       ).filter((block) => !block.closest(".docpro-page-break"));
 
       prose.classList.add("docpro-measuring-pagination");
-      textBlocks.forEach((block) => {
+      try {
+        textBlocks.forEach((block) => {
         const range = document.createRange();
         range.selectNodeContents(block);
         const proseRect = prose.getBoundingClientRect();
@@ -313,8 +314,10 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
             accumulatedShift += height;
           }
         }
-      });
-      prose.classList.remove("docpro-measuring-pagination");
+        });
+      } finally {
+        prose.classList.remove("docpro-measuring-pagination");
+      }
 
       const signature = paginationBreaksSignature(autoBreaks);
       if (signature !== previousSignature) {
