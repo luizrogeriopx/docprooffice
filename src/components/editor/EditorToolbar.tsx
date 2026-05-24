@@ -356,6 +356,63 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange, onOp
         <Strikethrough className="h-4 w-4" />
       </Btn>
 
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="relative h-8 w-8 p-0"
+            title="Cor do texto"
+            aria-label="Cor do texto"
+          >
+            <Baseline className="h-4 w-4" />
+            <span
+              className="absolute bottom-1 left-1.5 right-1.5 h-1 rounded-sm border border-border/40"
+              style={{ backgroundColor: (editor.getAttributes("textStyle").color as string) || "#000000" }}
+            />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-2" align="start">
+          <ColorPalette
+            colors={TEXT_COLORS}
+            current={editor.getAttributes("textStyle").color as string | undefined}
+            onSelect={(c) => editor.chain().focus().setColor(c).run()}
+            onClear={() => editor.chain().focus().unsetColor().run()}
+            clearLabel="Automático"
+          />
+        </PopoverContent>
+      </Popover>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="relative h-8 w-8 p-0"
+            title="Cor do realce"
+            aria-label="Cor do realce"
+          >
+            <Highlighter className="h-4 w-4" />
+            <span
+              className="absolute bottom-1 left-1.5 right-1.5 h-1 rounded-sm border border-border/40"
+              style={{ backgroundColor: (editor.getAttributes("highlight").color as string) || "#ffff00" }}
+            />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-2" align="start">
+          <ColorPalette
+            colors={HIGHLIGHT_COLORS}
+            current={editor.getAttributes("highlight").color as string | undefined}
+            onSelect={(c) => editor.chain().focus().setHighlight({ color: c }).run()}
+            onClear={() => editor.chain().focus().unsetHighlight().run()}
+            clearLabel="Sem realce"
+          />
+        </PopoverContent>
+      </Popover>
+
+
       <Separator orientation="vertical" className="mx-1 h-6" />
       <Btn
         label="Alinhar à esquerda"
