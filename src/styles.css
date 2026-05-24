@@ -304,7 +304,7 @@
 /* ============ Quebra de página A4 ============ */
 .docpro-editor .ProseMirror .docpro-page-break {
   display: block;
-  height: 40px;
+  height: var(--docpro-page-break-height, 40px);
   margin: 24px -96px;
   background:
     repeating-linear-gradient(
