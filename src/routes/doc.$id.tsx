@@ -13,6 +13,7 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { TableFormulas } from "@/components/editor/TableFormulas";
 import { FontSize } from "@/components/editor/FontSize";
+import { PageBreak } from "@/components/editor/PageBreak";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -56,6 +57,7 @@ function DocumentPage() {
       TableRow, TableHeader, TableCell,
       TableFormulas,
       FontSize,
+      PageBreak,
     ],
     content: "",
     onUpdate: () => scheduleSave(),
