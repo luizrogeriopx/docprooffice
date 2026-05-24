@@ -223,3 +223,80 @@
 .docpro-editor .ProseMirror td.has-formula-error::before {
   color: var(--destructive);
 }
+
+/* ============ ABNT formatting modes ============ */
+/* Applied by adding class to .docpro-editor wrapper */
+
+/* Base ABNT: Times New Roman 12pt, line-height 1.5, justify, first-line indent */
+.docpro-editor.abnt .ProseMirror {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 12pt;
+  line-height: 1.5;
+  color: #000;
+}
+.docpro-editor.abnt .ProseMirror p {
+  text-align: justify;
+  text-indent: 1.25cm;
+  margin: 0 0 0 0;
+}
+.docpro-editor.abnt .ProseMirror h1,
+.docpro-editor.abnt .ProseMirror h2,
+.docpro-editor.abnt .ProseMirror h3,
+.docpro-editor.abnt .ProseMirror h4,
+.docpro-editor.abnt .ProseMirror h5,
+.docpro-editor.abnt .ProseMirror h6 {
+  font-family: "Times New Roman", Times, serif;
+  text-indent: 0;
+  text-align: left;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin: 1em 0 0.5em;
+}
+.docpro-editor.abnt .ProseMirror h1 { font-size: 12pt; }
+.docpro-editor.abnt .ProseMirror h2 { font-size: 12pt; font-weight: 700; text-transform: none; }
+.docpro-editor.abnt .ProseMirror h3 { font-size: 12pt; font-weight: 700; font-style: italic; text-transform: none; }
+.docpro-editor.abnt .ProseMirror h4 { font-size: 12pt; font-weight: 400; text-transform: none; }
+.docpro-editor.abnt .ProseMirror h5 { font-size: 12pt; font-weight: 400; font-style: italic; text-transform: none; }
+.docpro-editor.abnt .ProseMirror h6 { font-size: 12pt; font-weight: 400; text-transform: none; }
+.docpro-editor.abnt .ProseMirror blockquote {
+  margin-left: 4cm;
+  font-size: 10pt;
+  line-height: 1.0;
+  border-left: none;
+  color: #000;
+  text-indent: 0;
+}
+.docpro-editor.abnt .ProseMirror blockquote p { text-indent: 0; }
+
+/* ABNT margins applied to the page wrapper */
+.docpro-page-content.abnt-page {
+  padding: 3cm 2cm 2cm 3cm !important;
+}
+
+/* Arial variant */
+.docpro-editor.abnt-arial .ProseMirror,
+.docpro-editor.abnt-arial .ProseMirror h1,
+.docpro-editor.abnt-arial .ProseMirror h2,
+.docpro-editor.abnt-arial .ProseMirror h3,
+.docpro-editor.abnt-arial .ProseMirror h4,
+.docpro-editor.abnt-arial .ProseMirror h5,
+.docpro-editor.abnt-arial .ProseMirror h6 {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Referências: alinhamento à esquerda, espaço simples, sem indentação */
+.docpro-editor.abnt-references .ProseMirror p {
+  text-align: left;
+  text-indent: 0;
+  line-height: 1.0;
+  margin: 0 0 0.5em;
+}
+
+/* Capa: tudo centralizado, maiúsculas, sem indentação */
+.docpro-editor.abnt-cover .ProseMirror p,
+.docpro-editor.abnt-cover .ProseMirror h1,
+.docpro-editor.abnt-cover .ProseMirror h2 {
+  text-align: center;
+  text-indent: 0;
+  text-transform: uppercase;
+}
