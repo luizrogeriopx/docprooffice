@@ -49,9 +49,91 @@ const Btn = ({ active, onClick, children, label }: { active?: boolean; onClick: 
   </Button>
 );
 
+const FONT_SIZES = ["8", "9", "10", "11", "12", "14", "16", "18", "20", "24", "28", "32", "36", "48", "60", "72"];
+
 export function EditorToolbar({ editor, title, abntMode = "", onAbntChange }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [currentFontSize, setCurrentFontSize] = useState("12");
+
+  // Keep the selector synchronized with the text under the caret/click.
+  useEffect(() => {
+    if (!editor) return;
+
+    const normalizeSize = (value?: unknown) => {
+      if (typeof value !== "string" || !value.trim()) return null;
+      const raw = value.trim();
+      const numeric = parseFloat(raw);
+      if (!isFinite(numeric)) return null;
+      if (raw.endsWith("px")) return String(Math.round((numeric * 72) / 96));
+      return String(Math.round(numeric));
+    };
+
+    let frame: number | null = null;
+    const compute = () => {
+      try {
+        const markedSize = normalizeSize(editor.getAttributes("textStyle").fontSize);
+        if (markedSize) {
+          setCurrentFontSize(markedSize);
+          return;
+        }
+
+        const textStyleMark = (editor.state.storedMarks ?? editor.state.selection.$from.marks())
+          .find((mark) => mark.type.name === "textStyle");
+        const activeMarkSize = normalizeSize(textStyleMark?.attrs.fontSize);
+        if (activeMarkSize) {
+          setCurrentFontSize(activeMarkSize);
+          return;
+        }
+
+        const pos = Math.max(0, Math.min(editor.state.selection.from, editor.state.doc.content.size));
+        const domAtPos = editor.view.domAtPos(pos);
+        let node: Node | null = domAtPos.node;
+
+        if (node.nodeType === Node.TEXT_NODE) {
+          node = node.parentNode;
+        } else if (node instanceof HTMLElement) {
+          const nearby = node.childNodes[Math.max(0, domAtPos.offset - 1)] ?? node.childNodes[domAtPos.offset];
+          if (nearby?.nodeType === Node.TEXT_NODE) node = nearby.parentNode;
+          else if (nearby instanceof HTMLElement) node = nearby;
+        }
+
+        if (!(node instanceof HTMLElement)) {
+          const coords = editor.view.coordsAtPos(pos);
+          const element = document.elementFromPoint(coords.left, coords.top);
+          if (element instanceof HTMLElement && editor.view.dom.contains(element)) node = element;
+        }
+
+        if (node instanceof HTMLElement) {
+          const renderedSize = normalizeSize(window.getComputedStyle(node).fontSize);
+          if (renderedSize) setCurrentFontSize(renderedSize);
+        }
+      } catch { /* noop */ }
+    };
+
+    const scheduleCompute = () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(compute);
+    };
+
+    compute();
+    editor.on("selectionUpdate", scheduleCompute);
+    editor.on("transaction", scheduleCompute);
+    editor.on("focus", scheduleCompute);
+    editor.on("update", scheduleCompute);
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      editor.off("selectionUpdate", scheduleCompute);
+      editor.off("transaction", scheduleCompute);
+      editor.off("focus", scheduleCompute);
+      editor.off("update", scheduleCompute);
+    };
+  }, [editor]);
+
   if (!editor) return null;
+
+  const visibleFontSizes = FONT_SIZES.includes(currentFontSize)
+    ? FONT_SIZES
+    : [...FONT_SIZES, currentFontSize].sort((a, b) => Number(a) - Number(b));
 
   const setLink = () => {
     const previous = editor.getAttributes("link").href as string | undefined;
@@ -76,35 +158,6 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange }: Pr
     editor.chain().focus().setImage({ src: data.publicUrl }).run();
     toast.success("Imagem enviada");
   };
-
-  const FONT_SIZES = ["8", "9", "10", "11", "12", "14", "16", "18", "20", "24", "28", "32", "36", "48", "60", "72"];
-
-  // Read the actual rendered font size at the caret from the DOM (single source of truth).
-  const [currentFontSize, setCurrentFontSize] = useState("12");
-  useEffect(() => {
-    if (!editor) return;
-    const compute = () => {
-      try {
-        const { from } = editor.state.selection;
-        const dom = editor.view.domAtPos(from);
-        let node: Node | null = dom.node;
-        if (node && node.nodeType === Node.TEXT_NODE) node = node.parentNode;
-        if (!(node instanceof HTMLElement)) return;
-        const pxStr = window.getComputedStyle(node).fontSize; // e.g. "16px"
-        const px = parseFloat(pxStr);
-        if (!isFinite(px)) return;
-        const pt = Math.round((px * 72) / 96);
-        setCurrentFontSize(String(pt));
-      } catch { /* noop */ }
-    };
-    compute();
-    editor.on("selectionUpdate", compute);
-    editor.on("transaction", compute);
-    return () => {
-      editor.off("selectionUpdate", compute);
-      editor.off("transaction", compute);
-    };
-  }, [editor]);
 
   return (
     <div className="sticky top-12 z-10 flex flex-wrap items-center gap-1 border-b bg-toolbar px-3 py-1.5 text-toolbar-foreground">
