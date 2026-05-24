@@ -71,7 +71,7 @@ export function NewDocumentDialog({ open, onOpenChange, userId }: Props) {
       const name = file.name.replace(/\.[^/.]+$/, "") || "Documento importado";
       let html = "";
       if (file.name.toLowerCase().endsWith(".docx")) {
-        const mammoth = await import("mammoth/mammoth.browser");
+        const mammoth = await import(/* @vite-ignore */ "mammoth/mammoth.browser" as string);
         const buf = await file.arrayBuffer();
         const res = await (mammoth as any).convertToHtml({ arrayBuffer: buf });
         html = res.value || "";
