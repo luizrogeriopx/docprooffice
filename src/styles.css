@@ -302,6 +302,12 @@
 }
 
 /* ============ Quebra de página A4 ============ */
+.docpro-editor .ProseMirror .docpro-auto-page-break {
+  display: block;
+  height: var(--docpro-auto-page-break-height, 0px);
+  margin: 0 -96px;
+  pointer-events: none;
+}
 .docpro-editor .ProseMirror .docpro-page-break {
   display: block;
   height: var(--docpro-page-break-height, 40px);
@@ -339,6 +345,9 @@
 }
 
 @media print {
+  .docpro-editor .ProseMirror .docpro-auto-page-break {
+    display: none;
+  }
   .docpro-editor .ProseMirror .docpro-page-break {
     background: none;
     border: none;
