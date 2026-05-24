@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
+import { EditorView } from "@tiptap/pm/view";
 import type { JSONContent } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -217,6 +218,76 @@ const A4_WIDTH = 794;
 const A4_HEIGHT = 1123;
 const A4_PAGE_GAP = 32;
 
+function findLineStartPos(
+  view: EditorView,
+  block: HTMLElement,
+  lineTop: number,
+  blockStartPos: number,
+): number {
+  const text = block.textContent || "";
+  if (!text) return blockStartPos;
+
+  const textNodes: Text[] = [];
+  const walk = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+  let node: Node | null;
+  while ((node = walk.nextNode())) {
+    textNodes.push(node as Text);
+  }
+  if (textNodes.length === 0) return blockStartPos;
+
+  let low = 0;
+  let high = text.length - 1;
+  let bestPos = blockStartPos;
+  let minDiff = Infinity;
+
+  const range = document.createRange();
+
+  const getDOMPos = (index: number): { node: Text; offset: number } | null => {
+    let acc = 0;
+    for (const tNode of textNodes) {
+      if (index >= acc && index <= acc + tNode.length) {
+        return { node: tNode, offset: index - acc };
+      }
+      acc += tNode.length;
+    }
+    return null;
+  };
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const domPos = getDOMPos(mid);
+    if (!domPos) break;
+
+    range.setStart(domPos.node, domPos.offset);
+    range.setEnd(domPos.node, Math.min(domPos.node.length, domPos.offset + 1));
+    const rects = range.getClientRects();
+
+    if (rects.length > 0) {
+      const rectTop = rects[0].top;
+      const diff = Math.abs(rectTop - lineTop);
+
+      if (diff < minDiff) {
+        minDiff = diff;
+        try {
+          bestPos = view.posAtDOM(domPos.node, domPos.offset);
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      if (rectTop < lineTop) {
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  return bestPos;
+}
+
 function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<typeof useEditor> }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -286,6 +357,8 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         top: number;
         docTop: number;
         docBottom: number;
+        block: HTMLElement;
+        blockStartPos: number;
       }> = [];
       const textBlocks = Array.from(
         prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre"),
@@ -298,6 +371,13 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       prose.classList.add("docpro-measuring-pagination");
       try {
         textBlocks.forEach((block) => {
+          let blockStartPos = 0;
+          try {
+            blockStartPos = editor.view.posAtDOM(block, 0);
+          } catch (e) {
+            return;
+          }
+
           const range = document.createRange();
           range.selectNodeContents(block);
           const lineRects = Array.from(range.getClientRects()).filter(
@@ -320,6 +400,8 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
             visualLines.push({
               left,
               top,
+              block,
+              blockStartPos,
               docTop: (top - proseRect.top) / visualScale + paddingTop,
               docBottom: (bottom - proseRect.top) / visualScale + paddingTop,
             });
@@ -338,41 +420,43 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
             const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
 
             if (pageIndex > 0 && lineTop < pageTop) {
-              const result = editor.view.posAtCoords({
-                left: currentLine.left + 1,
-                top: currentLine.top + 1,
-              });
-              if (!result) return;
+              const pos = findLineStartPos(
+                editor.view,
+                currentLine.block,
+                currentLine.top,
+                currentLine.blockStartPos,
+              );
               const height = Math.max(0, pageTop - lineTop);
               if (height > 0) {
-                const existingBreak = autoBreaks.find((b) => b.pos === result.pos);
+                const existingBreak = autoBreaks.find((b) => b.pos === pos);
                 if (existingBreak) {
                   if (height > existingBreak.height) {
                     accumulatedShift += height - existingBreak.height;
                     existingBreak.height = height;
                   }
                 } else {
-                  autoBreaks.push({ pos: result.pos, height });
+                  autoBreaks.push({ pos, height });
                   accumulatedShift += height;
                 }
               }
             } else if (lineBottom > pageBottom) {
-              const result = editor.view.posAtCoords({
-                left: currentLine.left + 1,
-                top: currentLine.top + 1,
-              });
-              if (!result) return;
+              const pos = findLineStartPos(
+                editor.view,
+                currentLine.block,
+                currentLine.top,
+                currentLine.blockStartPos,
+              );
               const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
               const height = Math.max(0, nextPageY - lineTop);
               if (height > 0) {
-                const existingBreak = autoBreaks.find((b) => b.pos === result.pos);
+                const existingBreak = autoBreaks.find((b) => b.pos === pos);
                 if (existingBreak) {
                   if (height > existingBreak.height) {
                     accumulatedShift += height - existingBreak.height;
                     existingBreak.height = height;
                   }
                 } else {
-                  autoBreaks.push({ pos: result.pos, height });
+                  autoBreaks.push({ pos, height });
                   accumulatedShift += height;
                 }
               }
