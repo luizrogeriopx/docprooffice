@@ -222,9 +222,9 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         const bottom = y + child.offsetHeight + marginBottom;
         const pageIndex = Math.floor(Math.max(0, y) / (A4_HEIGHT + A4_PAGE_GAP));
         const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
-        const usablePageHeight = A4_HEIGHT - paddingTop - paddingBottom;
+        
 
-        if (y < pageBottom && bottom > pageBottom && child.offsetHeight < usablePageHeight) {
+        if (y < pageBottom && bottom > pageBottom) {
           const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
           child.dataset.docproOriginalMarginTop = child.style.marginTop;
           child.style.marginTop = `${marginTop + Math.max(0, nextPageY - y)}px`;
