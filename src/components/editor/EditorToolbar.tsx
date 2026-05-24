@@ -27,6 +27,7 @@ import {
   FileText,
   BookMarked,
   FilePlus,
+  Settings2,
   Check as CheckIcon,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -53,6 +54,7 @@ interface Props {
   title: string;
   abntMode?: string;
   onAbntChange?: (mode: string) => void;
+  onOpenPageSettings?: () => void;
 }
 
 const ABNT_OPTIONS: { value: string; label: string; desc: string }[] = [
@@ -118,7 +120,7 @@ const FONT_SIZES = [
   "72",
 ];
 
-export function EditorToolbar({ editor, title, abntMode = "", onAbntChange }: Props) {
+export function EditorToolbar({ editor, title, abntMode = "", onAbntChange, onOpenPageSettings }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [currentFontSize, setCurrentFontSize] = useState("12");
 
@@ -394,6 +396,19 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange }: Pr
         <FilePlus className="h-4 w-4" />
         <span className="hidden sm:inline text-xs">Nova página</span>
       </Button>
+      {onOpenPageSettings && (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-8 gap-1.5 px-2"
+          title="Rodapé, números de página e marca d'água"
+          onClick={onOpenPageSettings}
+        >
+          <Settings2 className="h-4 w-4" />
+          <span className="hidden sm:inline text-xs">Página</span>
+        </Button>
+      )}
 
       <div className="ml-auto flex items-center gap-1">
         <DropdownMenu>

@@ -31,6 +31,14 @@ import { Loader2, FileText, Cloud, CloudOff, Check } from "lucide-react";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { AiSidebar } from "@/components/editor/AiSidebar";
 import { DocumentsSidebar } from "@/components/editor/DocumentsSidebar";
+import { PageSettingsDialog } from "@/components/editor/PageSettingsDialog";
+import { PageOverlays } from "@/components/editor/PageOverlays";
+import {
+  DEFAULT_PAGE_SETTINGS,
+  loadPageSettings,
+  savePageSettings,
+  type PageSettings,
+} from "@/components/editor/pageSettings";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -105,12 +113,24 @@ function DocumentPage() {
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [docLoaded, setDocLoaded] = useState(false);
   const [abntMode, setAbntMode] = useState<string>(""); // "", "abnt", "abnt abnt-arial", "abnt abnt-references", "abnt abnt-cover"
+  const [pageSettings, setPageSettings] = useState<PageSettings>(DEFAULT_PAGE_SETTINGS);
+  const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
   }, [user, loading, navigate]);
+
+  // Load page settings (footer / page numbers / watermark)
+  useEffect(() => {
+    setPageSettings(loadPageSettings(id));
+  }, [id]);
+
+  const updatePageSettings = (next: PageSettings) => {
+    setPageSettings(next);
+    savePageSettings(id, next);
+  };
 
   const editor = useEditor({
     extensions: [
@@ -270,6 +290,7 @@ function DocumentPage() {
             title={title}
             abntMode={abntMode}
             onAbntChange={setAbntMode}
+            onOpenPageSettings={() => setPageSettingsOpen(true)}
           />
           <div
             className="flex-1 overflow-auto overscroll-contain"
@@ -280,12 +301,19 @@ function DocumentPage() {
               } as React.CSSProperties
             }
           >
-            <DocPage abntMode={abntMode} editor={editor} />
+            <DocPage abntMode={abntMode} editor={editor} pageSettings={pageSettings} />
           </div>
         </div>
 
         <AiSidebar editor={editor} />
       </div>
+
+      <PageSettingsDialog
+        open={pageSettingsOpen}
+        onOpenChange={setPageSettingsOpen}
+        value={pageSettings}
+        onChange={updatePageSettings}
+      />
     </div>
   );
 }
@@ -346,7 +374,15 @@ function getBlockDocumentPosition(view: EditorView, block: HTMLElement): number 
   return found;
 }
 
-function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<typeof useEditor> }) {
+function DocPage({
+  abntMode,
+  editor,
+  pageSettings,
+}: {
+  abntMode: string;
+  editor: ReturnType<typeof useEditor>;
+  pageSettings: PageSettings;
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -534,6 +570,15 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
             style={{ minHeight: contentHeight, width: A4_WIDTH }}
           >
             <EditorContent editor={editor} />
+            <PageOverlays
+              settings={pageSettings}
+              pageCount={pageCount}
+              pageStride={pageStride}
+              pageHeight={A4_HEIGHT}
+              pageWidth={A4_WIDTH}
+              marginX={96}
+              marginY={96}
+            />
           </div>
         </div>
       </div>
