@@ -37,9 +37,6 @@ interface Props {
 }
 
 const POSITIONS: { value: PageNumberPosition; label: string }[] = [
-  { value: "top-left", label: "Topo · esquerda" },
-  { value: "top-center", label: "Topo · centro" },
-  { value: "top-right", label: "Topo · direita" },
   { value: "bottom-left", label: "Rodapé · esquerda" },
   { value: "bottom-center", label: "Rodapé · centro" },
   { value: "bottom-right", label: "Rodapé · direita" },
@@ -215,6 +212,7 @@ export function PageSettingsDialog({ open, onOpenChange, value, onChange }: Prop
                     src={local.watermark.imageUrl}
                     alt="Marca d'água"
                     className="h-full w-full object-contain"
+                    style={{ opacity: local.watermark.enabled ? local.watermark.opacity : 1 }}
                   />
                 ) : (
                   <ImagePlus className="h-5 w-5 text-muted-foreground" />
