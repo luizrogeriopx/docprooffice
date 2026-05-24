@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
+import type { JSONContent } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import LinkExt from "@tiptap/extension-link";
@@ -14,6 +15,12 @@ import { TableHeader } from "@tiptap/extension-table-header";
 import { TableFormulas } from "@/components/editor/TableFormulas";
 import { FontSize } from "@/components/editor/FontSize";
 import { PageBreak } from "@/components/editor/PageBreak";
+import {
+  PaginationBreaks,
+  paginationBreaksSignature,
+  setPaginationBreaks,
+  type PaginationBreakSpec,
+} from "@/components/editor/PaginationBreaks";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -22,6 +29,7 @@ import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { AiSidebar } from "@/components/editor/AiSidebar";
 import { DocumentsSidebar } from "@/components/editor/DocumentsSidebar";
 import { toast } from "sonner";
+import type { Json } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/doc/$id")({
   component: DocumentPage,
@@ -49,15 +57,22 @@ function DocumentPage() {
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] } }),
       Underline,
-      LinkExt.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" } }),
+      LinkExt.configure({
+        openOnClick: false,
+        autolink: true,
+        HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
+      }),
       ResizableImage,
       Placeholder.configure({ placeholder: "Comece a escrever..." }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Table.configure({ resizable: true }),
-      TableRow, TableHeader, TableCell,
+      TableRow,
+      TableHeader,
+      TableCell,
       TableFormulas,
       FontSize,
       PageBreak,
+      PaginationBreaks,
     ],
     content: "",
     onUpdate: () => scheduleSave(),
@@ -67,10 +82,18 @@ function DocumentPage() {
   useEffect(() => {
     if (!user || !editor) return;
     (async () => {
-      const { data, error } = await supabase.from("documents").select("*").eq("id", id).maybeSingle();
-      if (error || !data) { toast.error("Documento não encontrado"); navigate({ to: "/dashboard" }); return; }
+      const { data, error } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (error || !data) {
+        toast.error("Documento não encontrado");
+        navigate({ to: "/dashboard" });
+        return;
+      }
       setTitle(data.title);
-      const json = data.content as any;
+      const json = data.content as JSONContent | null;
       const isEmptyJson = !json || (json?.content?.length === 1 && !json.content[0]?.content);
       if (isEmptyJson && data.content_html) {
         editor.commands.setContent(data.content_html);
@@ -94,10 +117,15 @@ function DocumentPage() {
     if (!editor) return;
     const { error } = await supabase
       .from("documents")
-      .update({ title, content: editor.getJSON() as any, content_html: editor.getHTML() })
+      .update({ title, content: editor.getJSON() as Json, content_html: editor.getHTML() })
       .eq("id", id);
-    if (error) { setStatus("error"); toast.error("Erro ao salvar"); }
-    else { setStatus("saved"); setSavedAt(new Date()); }
+    if (error) {
+      setStatus("error");
+      toast.error("Erro ao salvar");
+    } else {
+      setStatus("saved");
+      setSavedAt(new Date());
+    }
   };
 
   const snapshotHistory = async () => {
@@ -105,15 +133,21 @@ function DocumentPage() {
     await supabase.from("document_history").insert({
       document_id: id,
       user_id: user.id,
-      content: editor.getJSON() as any,
+      content: editor.getJSON() as Json,
     });
   };
 
   // Save on title change
-  useEffect(() => { if (docLoaded) scheduleSave(); /* eslint-disable-next-line */ }, [title]);
+  useEffect(() => {
+    if (docLoaded) scheduleSave(); /* eslint-disable-next-line */
+  }, [title]);
 
   if (loading || !user) {
-    return <div className="grid min-h-screen place-items-center bg-canvas"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+    return (
+      <div className="grid min-h-screen place-items-center bg-canvas">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
   }
 
   return (
@@ -131,9 +165,22 @@ function DocumentPage() {
           className="min-w-0 max-w-md flex-1 rounded-md bg-transparent px-2 py-1 text-sm font-medium outline-none transition focus:bg-accent"
         />
         <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-          {status === "saving" && (<><Cloud className="h-3.5 w-3.5 animate-pulse" /> Salvando...</>)}
-          {status === "saved" && (<><Check className="h-3.5 w-3.5 text-primary" /> Salvo {savedAt ? savedAt.toLocaleTimeString() : ""}</>)}
-          {status === "error" && (<><CloudOff className="h-3.5 w-3.5 text-destructive" /> Erro ao salvar</>)}
+          {status === "saving" && (
+            <>
+              <Cloud className="h-3.5 w-3.5 animate-pulse" /> Salvando...
+            </>
+          )}
+          {status === "saved" && (
+            <>
+              <Check className="h-3.5 w-3.5 text-primary" /> Salvo{" "}
+              {savedAt ? savedAt.toLocaleTimeString() : ""}
+            </>
+          )}
+          {status === "error" && (
+            <>
+              <CloudOff className="h-3.5 w-3.5 text-destructive" /> Erro ao salvar
+            </>
+          )}
         </div>
       </header>
 
@@ -141,8 +188,21 @@ function DocumentPage() {
         <DocumentsSidebar currentId={id} userId={user.id} />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <EditorToolbar editor={editor} title={title} abntMode={abntMode} onAbntChange={setAbntMode} />
-          <div className="flex-1 overflow-auto overscroll-contain" style={{ touchAction: "pan-y pinch-zoom", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
+          <EditorToolbar
+            editor={editor}
+            title={title}
+            abntMode={abntMode}
+            onAbntChange={setAbntMode}
+          />
+          <div
+            className="flex-1 overflow-auto overscroll-contain"
+            style={
+              {
+                touchAction: "pan-y pinch-zoom",
+                WebkitOverflowScrolling: "touch",
+              } as React.CSSProperties
+            }
+          >
             <DocPage abntMode={abntMode} editor={editor} />
           </div>
         </div>
@@ -180,10 +240,11 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
 
   useEffect(() => {
     const contentEl = contentRef.current;
-    if (!contentEl) return;
+    if (!contentEl || !editor) return;
 
     let frame: number | null = null;
     let observer: ResizeObserver | null = null;
+    let previousSignature = "";
 
     const layout = () => {
       const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
@@ -196,9 +257,6 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
 
       Array.from(prose.children).forEach((child) => {
         if (!(child instanceof HTMLElement)) return;
-        const originalMarginTop = child.dataset.docproOriginalMarginTop;
-        if (originalMarginTop !== undefined) child.style.marginTop = originalMarginTop;
-        delete child.dataset.docproOriginalMarginTop;
         if (child.classList.contains("docpro-page-break")) {
           child.style.setProperty("--docpro-page-break-height", "0px");
         }
@@ -213,23 +271,60 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         pageBreak.style.setProperty("--docpro-page-break-height", `${height}px`);
       });
 
-      Array.from(prose.children).forEach((child) => {
-        if (!(child instanceof HTMLElement) || child.classList.contains("docpro-page-break")) return;
-        const childStyles = window.getComputedStyle(child);
-        const marginTop = parseFloat(childStyles.marginTop) || 0;
-        const marginBottom = parseFloat(childStyles.marginBottom) || 0;
-        const y = paddingTop + child.offsetTop;
-        const bottom = y + child.offsetHeight + marginBottom;
-        const pageIndex = Math.floor(Math.max(0, y) / (A4_HEIGHT + A4_PAGE_GAP));
-        const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
-        
+      const autoBreaks: PaginationBreakSpec[] = [];
+      const textBlocks = Array.from(
+        prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, blockquote, pre"),
+      ).filter((block) => !block.closest(".docpro-page-break"));
 
-        if (y < pageBottom && bottom > pageBottom) {
-          const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-          child.dataset.docproOriginalMarginTop = child.style.marginTop;
-          child.style.marginTop = `${marginTop + Math.max(0, nextPageY - y)}px`;
-        }
-      });
+      prose.classList.add("docpro-measuring-pagination");
+      try {
+        textBlocks.forEach((block) => {
+          const range = document.createRange();
+          range.selectNodeContents(block);
+          const proseRect = prose.getBoundingClientRect();
+          const lineRects = Array.from(range.getClientRects())
+            .filter((rect) => rect.width > 0 && rect.height > 0)
+            .map((rect) => ({
+              left: rect.left,
+              top: rect.top,
+              docTop: rect.top - proseRect.top + paddingTop,
+              docBottom: rect.bottom - proseRect.top + paddingTop,
+            }));
+          range.detach();
+
+          if (lineRects.length === 0) return;
+
+          let accumulatedShift = 0;
+          for (let index = 0; index < lineRects.length; index += 1) {
+            const currentLine = lineRects[index];
+            const lineTop = currentLine.docTop + accumulatedShift;
+            const lineBottom = currentLine.docBottom + accumulatedShift;
+            const pageIndex = Math.floor(Math.max(0, lineTop) / (A4_HEIGHT + A4_PAGE_GAP));
+            const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
+
+            if (lineBottom > pageBottom) {
+              const result = editor.view.posAtCoords({
+                left: currentLine.left + 1,
+                top: currentLine.top + 1,
+              });
+              if (!result) continue;
+              const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+              const height = Math.max(0, nextPageY - lineTop);
+              autoBreaks.push({ pos: result.pos, height });
+              accumulatedShift += height;
+            }
+          }
+        });
+      } finally {
+        prose.classList.remove("docpro-measuring-pagination");
+      }
+
+      const signature = paginationBreaksSignature(autoBreaks);
+      if (signature !== previousSignature) {
+        previousSignature = signature;
+        setPaginationBreaks(editor.view, autoBreaks);
+        return;
+      }
 
       const contentBottom = Array.from(prose.children).reduce((bottom, child) => {
         if (!(child instanceof HTMLElement)) return bottom;
@@ -238,7 +333,10 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         return Math.max(bottom, child.offsetTop + child.offsetHeight + marginBottom);
       }, 0);
       const measuredHeight = paddingTop + contentBottom + paddingBottom;
-      const pages = Math.max(1, Math.floor(Math.max(0, measuredHeight - 1) / (A4_HEIGHT + A4_PAGE_GAP)) + 1);
+      const pages = Math.max(
+        1,
+        Math.floor(Math.max(0, measuredHeight - 1) / (A4_HEIGHT + A4_PAGE_GAP)) + 1,
+      );
       setPageCount((current) => (current === pages ? current : pages));
     };
 
@@ -310,4 +408,3 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
     </div>
   );
 }
-
