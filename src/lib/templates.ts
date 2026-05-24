@@ -68,13 +68,14 @@ export const TEMPLATES: Record<TemplateKey, string> = {
         <tr><th>Descrição</th><th>Qtd</th><th>Valor Unit.</th><th>Total</th></tr>
       </thead>
       <tbody>
-        <tr><td>Serviço/Produto 1</td><td>1</td><td>R$ 1.000,00</td><td>R$ 1.000,00</td></tr>
-        <tr><td>Serviço/Produto 2</td><td>2</td><td>R$ 500,00</td><td>R$ 1.000,00</td></tr>
-        <tr><td colspan="3" style="text-align:right"><strong>Subtotal</strong></td><td>R$ 2.000,00</td></tr>
-        <tr><td colspan="3" style="text-align:right"><strong>Impostos</strong></td><td>R$ 0,00</td></tr>
-        <tr><td colspan="3" style="text-align:right"><strong>Total</strong></td><td><strong>R$ 2.000,00</strong></td></tr>
+        <tr><td>Serviço/Produto 1</td><td>1</td><td>1000</td><td>=B2*C2</td></tr>
+        <tr><td>Serviço/Produto 2</td><td>2</td><td>500</td><td>=B3*C3</td></tr>
+        <tr><td></td><td></td><td><strong>Subtotal</strong></td><td>=SUM(D2:D3)</td></tr>
+        <tr><td></td><td></td><td><strong>Impostos</strong></td><td>0</td></tr>
+        <tr><td></td><td></td><td><strong>Total</strong></td><td>=D4+D5</td></tr>
       </tbody>
     </table>
+    <p style="font-size:0.85em;color:#666"><em>Dica: as células com <strong>ƒx</strong> são fórmulas automáticas. Edite valores nas colunas Qtd e Valor Unit. — os totais recalculam sozinhos.</em></p>
     <h3>Forma de pagamento</h3>
     <p>PIX: chave@email.com · Banco XYZ · Ag. 0000 · Conta 00000-0</p>
     <p><em>Obrigado pela preferência!</em></p>
