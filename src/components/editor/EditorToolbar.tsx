@@ -120,7 +120,7 @@ const FONT_SIZES = [
   "72",
 ];
 
-export function EditorToolbar({ editor, title, abntMode = "", onAbntChange }: Props) {
+export function EditorToolbar({ editor, title, abntMode = "", onAbntChange, onOpenPageSettings }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [currentFontSize, setCurrentFontSize] = useState("12");
 
