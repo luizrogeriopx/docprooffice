@@ -188,3 +188,38 @@
   margin: 0 2px;
   align-self: center;
 }
+
+/* Table formula cells */
+.docpro-editor .ProseMirror td.has-formula,
+.docpro-editor .ProseMirror th.has-formula {
+  position: relative;
+  background: oklch(0.97 0.02 220);
+}
+.docpro-editor .ProseMirror td.has-formula > *,
+.docpro-editor .ProseMirror th.has-formula > * {
+  visibility: hidden;
+}
+.docpro-editor .ProseMirror td.has-formula::before,
+.docpro-editor .ProseMirror th.has-formula::before {
+  content: attr(data-result);
+  position: absolute;
+  inset: 6px 8px;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+  color: oklch(0.18 0.01 260);
+}
+.docpro-editor .ProseMirror td.has-formula::after,
+.docpro-editor .ProseMirror th.has-formula::after {
+  content: "ƒx";
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  font-size: 9px;
+  font-style: italic;
+  color: var(--primary);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.docpro-editor .ProseMirror td.has-formula-error::before {
+  color: var(--destructive);
+}
