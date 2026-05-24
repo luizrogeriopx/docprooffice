@@ -120,6 +120,7 @@ function Dashboard() {
           </div>
         )}
       </main>
+      <NewDocumentDialog open={dialogOpen} onOpenChange={setDialogOpen} userId={user.id} />
     </div>
   );
 }
