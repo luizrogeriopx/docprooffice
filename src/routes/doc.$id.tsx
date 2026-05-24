@@ -196,7 +196,13 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         <div
           ref={pageRef}
           className={`docpro-editor rounded-sm bg-page shadow-md ring-1 ring-black/5 ${abntMode}`}
-          style={{ width: A4_WIDTH, transform: `scale(${scale})`, transformOrigin: "top left" }}
+          style={{
+            width: A4_WIDTH,
+            height: contentHeight,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+            backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${A4_HEIGHT - 1}px, hsl(var(--border)) ${A4_HEIGHT - 1}px, hsl(var(--border)) ${A4_HEIGHT}px)`,
+          }}
         >
           <div
             className={`docpro-page-content px-[96px] py-[96px] ${abntMode ? "abnt-page" : ""}`}
