@@ -5,10 +5,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { FileText, Plus, Search, Trash2, LogOut, Loader2 } from "lucide-react";
+import { FileText, Plus, Search, Trash2, LogOut, Loader2, Share2, Mail, MessageCircle, HardDrive } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { NewDocumentDialog } from "@/components/dashboard/NewDocumentDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -35,6 +43,37 @@ function Dashboard() {
       .order("updated_at", { ascending: false });
     if (error) toast.error(error.message);
     else setDocs(data as Doc[]);
+  };
+
+  const shareUrlFor = (id: string) => `${window.location.origin}/doc/${id}`;
+  const shareText = (title: string, url: string) =>
+    `Confira o documento "${title}": ${url}`;
+
+  const shareWhatsApp = (doc: Doc, business = false) => {
+    const url = shareUrlFor(doc.id);
+    const text = encodeURIComponent(shareText(doc.title, url));
+    const target = business
+      ? `whatsapp://send?text=${text}`
+      : `https://wa.me/?text=${text}`;
+    window.open(target, "_blank");
+  };
+
+  const shareEmail = (doc: Doc) => {
+    const url = shareUrlFor(doc.id);
+    const subject = encodeURIComponent(`Documento: ${doc.title}`);
+    const body = encodeURIComponent(shareText(doc.title, url));
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
+
+  const shareDrive = async (doc: Doc) => {
+    const url = shareUrlFor(doc.id);
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copiado. Cole no Google Drive.");
+    } catch {
+      toast.error("Não foi possível copiar o link");
+    }
+    window.open("https://drive.google.com/drive/my-drive", "_blank");
   };
 
   useEffect(() => { if (user) load(); }, [user]);
@@ -108,13 +147,42 @@ function Dashboard() {
                     </div>
                   </div>
                 </Link>
-                <button
-                  onClick={() => remove(d.id)}
-                  className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-md bg-background/80 opacity-0 transition hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100"
-                  aria-label="Excluir"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="grid h-8 w-8 place-items-center rounded-md bg-background/80 hover:bg-accent"
+                        aria-label="Compartilhar"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Share2 className="h-4 w-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenuLabel>Compartilhar</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => shareWhatsApp(d, false)}>
+                        <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => shareWhatsApp(d, true)}>
+                        <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp Business
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => shareEmail(d)}>
+                        <Mail className="mr-2 h-4 w-4" /> E-mail
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => shareDrive(d)}>
+                        <HardDrive className="mr-2 h-4 w-4" /> Google Drive
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <button
+                    onClick={() => remove(d.id)}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-background/80 transition hover:bg-destructive hover:text-destructive-foreground"
+                    aria-label="Excluir"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
