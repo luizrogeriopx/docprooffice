@@ -542,6 +542,8 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         }
       }
 
+      autoBreaks.sort((a, b) => a.pos - b.pos || b.height - a.height);
+
       const signature = paginationBreaksSignature(autoBreaks);
       if (signature !== previousSignature) {
         previousSignature = signature;
