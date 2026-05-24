@@ -225,20 +225,9 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         const usablePageHeight = A4_HEIGHT - paddingTop - paddingBottom;
 
         if (y < pageBottom && bottom > pageBottom) {
-          if (child.offsetHeight <= usablePageHeight) {
-            const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-            child.dataset.docproOriginalMarginTop = child.style.marginTop;
-            child.style.marginTop = `${marginTop + Math.max(0, nextPageY - y)}px`;
-          } else {
-            // Block is taller than a page (long paragraph, table, image).
-            // Try to split text-bearing blocks via line boxes; otherwise push it.
-            const pushed = splitOrPushAcrossPages(child, y, pageIndex, paddingTop, paddingBottom);
-            if (!pushed) {
-              const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-              child.dataset.docproOriginalMarginTop = child.style.marginTop;
-              child.style.marginTop = `${marginTop + Math.max(0, nextPageY - y)}px`;
-            }
-          }
+          const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+          child.dataset.docproOriginalMarginTop = child.style.marginTop;
+          child.style.marginTop = `${marginTop + Math.max(0, nextPageY - y)}px`;
         }
       });
 
