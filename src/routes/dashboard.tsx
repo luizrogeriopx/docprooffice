@@ -5,10 +5,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { FileText, Plus, Search, Trash2, LogOut, Loader2 } from "lucide-react";
+import { FileText, Plus, Search, Trash2, LogOut, Loader2, Share2, Mail, MessageCircle, HardDrive } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { NewDocumentDialog } from "@/components/dashboard/NewDocumentDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
