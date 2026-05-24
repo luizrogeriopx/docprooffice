@@ -56,16 +56,18 @@ export function PageOverlays({
       );
     }
 
-    // Footer text (always at bottom-center inside bottom margin)
+    // Footer text (kept above page numbering when both are enabled)
     if (settings.footer.enabled && settings.footer.text) {
+      const footerOffset = settings.pageNumber.enabled ? 24 : 8;
       items.push(
         <div
           key={`ft-${i}`}
           className="pointer-events-none absolute text-center text-[10pt] text-muted-foreground"
           style={{
-            top: top + pageHeight - marginY / 2 - 6,
+            top: top + pageHeight - marginY / 2 - footerOffset,
             left: marginX,
             width: pageWidth - marginX * 2,
+            lineHeight: 1.2,
             color: "oklch(0.4 0.01 260)",
           }}
         >
@@ -82,7 +84,7 @@ export function PageOverlays({
       const isLeft = pos.endsWith("left");
       const isRight = pos.endsWith("right");
 
-      const verticalOffset = isTop ? marginY / 2 - 8 : pageHeight - marginY / 2 - 8;
+      const verticalOffset = isTop ? marginY / 2 - 8 : pageHeight - marginY / 2 - 6;
       const textAlign: React.CSSProperties["textAlign"] = isLeft
         ? "left"
         : isRight
@@ -98,6 +100,7 @@ export function PageOverlays({
             left: marginX,
             width: pageWidth - marginX * 2,
             textAlign,
+            lineHeight: 1.2,
             color: "oklch(0.4 0.01 260)",
           }}
         >
