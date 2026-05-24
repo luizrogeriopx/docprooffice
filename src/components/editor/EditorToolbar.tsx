@@ -146,6 +146,33 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange }: Pr
       <div className="ml-auto flex items-center gap-1">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
+            <Button type="button" size="sm" variant="ghost" className="h-8" title="Formatar documento (ABNT)">
+              <BookMarked className="mr-1.5 h-4 w-4" /> Formatar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <div className="px-2 py-1.5 text-xs font-semibold uppercase text-muted-foreground">Normas ABNT</div>
+            {ABNT_OPTIONS.map((opt) => {
+              const active = abntMode === opt.value;
+              return (
+                <DropdownMenuItem
+                  key={opt.value || "none"}
+                  onClick={() => { onAbntChange?.(opt.value); toast.success(active ? "Formatação mantida" : `Aplicado: ${opt.label}`); }}
+                  className="flex flex-col items-start gap-0.5 py-2"
+                >
+                  <div className="flex w-full items-center gap-2">
+                    {active ? <CheckIcon className="h-3.5 w-3.5 text-primary" /> : <span className="w-3.5" />}
+                    <span className="font-medium">{opt.label}</span>
+                  </div>
+                  <span className="pl-5 text-xs text-muted-foreground">{opt.desc}</span>
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <Button type="button" size="sm" variant="ghost" className="h-8">
               <Download className="mr-1.5 h-4 w-4" /> Exportar
             </Button>
