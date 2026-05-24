@@ -200,7 +200,8 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       breaks.forEach((pageBreak) => {
         const y = pageBreak.offsetTop;
         const absoluteY = paddingTop + y;
-        const nextPageContentTop = (Math.floor(absoluteY / A4_HEIGHT) + 1) * A4_HEIGHT + paddingTop;
+        const pageIndex = Math.floor(Math.max(0, absoluteY - 1) / A4_HEIGHT);
+        const nextPageContentTop = (pageIndex + 1) * A4_HEIGHT + paddingTop;
         const height = Math.max(40, nextPageContentTop - absoluteY);
         pageBreak.style.setProperty("--docpro-page-break-height", `${height}px`);
       });
