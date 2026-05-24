@@ -54,7 +54,7 @@ const ChatSchema = z.object({
   selectionText: z.string().max(10000).optional().default(""),
 });
 
-const CHAT_SYSTEM = `Você é o DocPro Copilot, um assistente integrado a um editor de documentos.
+const CHAT_SYSTEM = `Você é o Assistente DocPro, um assistente integrado a um editor de documentos.
 Ajude o usuário a redigir, revisar, reestruturar, traduzir ou gerar conteúdo para o documento aberto.
 Responda sempre em português (a menos que o usuário escreva em outro idioma).
 

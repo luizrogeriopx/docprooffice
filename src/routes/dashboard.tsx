@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { FileText, Plus, Search, Trash2, LogOut, Loader2, Share2, Mail, MessageCircle, HardDrive } from "lucide-react";
+import { FileText, Plus, Search, Trash2, LogOut, Loader2, Share2, Mail, MessageCircle, HardDrive, Briefcase } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { NewDocumentDialog } from "@/components/dashboard/NewDocumentDialog";
@@ -147,38 +147,62 @@ function Dashboard() {
                     </div>
                   </div>
                 </Link>
-                <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition group-hover:opacity-100">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        className="grid h-8 w-8 place-items-center rounded-md bg-background/80 hover:bg-accent"
-                        aria-label="Compartilhar"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Share2 className="h-4 w-4" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenuLabel>Compartilhar</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => shareWhatsApp(d, false)}>
-                        <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => shareWhatsApp(d, true)}>
-                        <MessageCircle className="mr-2 h-4 w-4" /> WhatsApp Business
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => shareEmail(d)}>
-                        <Mail className="mr-2 h-4 w-4" /> E-mail
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => shareDrive(d)}>
-                        <HardDrive className="mr-2 h-4 w-4" /> Google Drive
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                <div className="absolute right-2 top-2 flex flex-wrap justify-end gap-1">
                   <button
-                    onClick={() => remove(d.id)}
-                    className="grid h-8 w-8 place-items-center rounded-md bg-background/80 transition hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={(e) => { e.stopPropagation(); shareWhatsApp(d, false); }}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-background/90 shadow-sm hover:bg-accent"
+                    aria-label="Compartilhar no WhatsApp"
+                    title="WhatsApp"
+                  >
+                    <svg viewBox="0 0 32 32" className="h-4 w-4" aria-hidden="true">
+                      <path fill="#25D366" d="M16 .4C7.4.4.5 7.3.5 15.9c0 2.8.7 5.4 2.1 7.8L.4 31.6l8.1-2.1c2.3 1.2 4.8 1.9 7.5 1.9 8.6 0 15.5-6.9 15.5-15.5S24.6.4 16 .4z"/>
+                      <path fill="#fff" d="M23.5 19.7c-.4-.2-2.3-1.1-2.7-1.3-.4-.1-.6-.2-.9.2-.3.4-1 1.3-1.3 1.6-.2.3-.5.3-.8.1-.4-.2-1.6-.6-3.1-1.9-1.1-1-1.9-2.3-2.2-2.7-.2-.4 0-.6.2-.8.2-.2.4-.5.5-.7.2-.2.2-.4.4-.6.1-.2.1-.5 0-.7-.1-.2-.9-2.2-1.2-3-.3-.8-.7-.7-.9-.7h-.8c-.3 0-.7.1-1.1.5-.4.4-1.4 1.4-1.4 3.4 0 2 1.5 3.9 1.7 4.2.2.3 2.9 4.5 7.1 6.3 1 .4 1.8.7 2.4.9.8.3 1.5.2 2.1.1.6-.1 2-.8 2.3-1.6.3-.8.3-1.5.2-1.6-.1-.1-.4-.2-.8-.4z"/>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); shareWhatsApp(d, true); }}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-background/90 shadow-sm hover:bg-accent"
+                    aria-label="Compartilhar no WhatsApp Business"
+                    title="WhatsApp Business"
+                  >
+                    <svg viewBox="0 0 32 32" className="h-4 w-4" aria-hidden="true">
+                      <path fill="#075E54" d="M16 .4C7.4.4.5 7.3.5 15.9c0 2.8.7 5.4 2.1 7.8L.4 31.6l8.1-2.1c2.3 1.2 4.8 1.9 7.5 1.9 8.6 0 15.5-6.9 15.5-15.5S24.6.4 16 .4z"/>
+                      <path fill="#fff" d="M23.5 19.7c-.4-.2-2.3-1.1-2.7-1.3-.4-.1-.6-.2-.9.2-.3.4-1 1.3-1.3 1.6-.2.3-.5.3-.8.1-.4-.2-1.6-.6-3.1-1.9-1.1-1-1.9-2.3-2.2-2.7-.2-.4 0-.6.2-.8.2-.2.4-.5.5-.7.2-.2.2-.4.4-.6.1-.2.1-.5 0-.7-.1-.2-.9-2.2-1.2-3-.3-.8-.7-.7-.9-.7h-.8c-.3 0-.7.1-1.1.5-.4.4-1.4 1.4-1.4 3.4 0 2 1.5 3.9 1.7 4.2.2.3 2.9 4.5 7.1 6.3 1 .4 1.8.7 2.4.9.8.3 1.5.2 2.1.1.6-.1 2-.8 2.3-1.6.3-.8.3-1.5.2-1.6-.1-.1-.4-.2-.8-.4z"/>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); shareEmail(d); }}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-background/90 shadow-sm hover:bg-accent"
+                    aria-label="Compartilhar por e-mail"
+                    title="E-mail"
+                  >
+                    <svg viewBox="0 0 32 32" className="h-4 w-4" aria-hidden="true">
+                      <path fill="#EA4335" d="M16 18.5L2 8.4V8c0-1.1.9-2 2-2h24c1.1 0 2 .9 2 2v.4L16 18.5z"/>
+                      <path fill="#FBBC04" d="M2 8.4l14 10.1L30 8.4V24c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V8.4z"/>
+                      <path fill="#34A853" d="M16 18.5L30 8.4V24c0 1.1-.9 2-2 2H16V18.5z"/>
+                      <path fill="#4285F4" d="M16 18.5L2 8.4V24c0 1.1.9 2 2 2h12V18.5z"/>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); shareDrive(d); }}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-background/90 shadow-sm hover:bg-accent"
+                    aria-label="Compartilhar no Google Drive"
+                    title="Google Drive"
+                  >
+                    <svg viewBox="0 0 32 32" className="h-4 w-4" aria-hidden="true">
+                      <path fill="#0066DA" d="M2.7 23.6l1.6 2.7c.3.6.8 1 1.4 1.3L11.4 18H0c0 .7.2 1.4.5 2l2.2 3.6z"/>
+                      <path fill="#00AC47" d="M16 10L10.3 0 4.6 10c-.3.6-.5 1.3-.5 2h11.4l.5-2z"/>
+                      <path fill="#EA4335" d="M26 27.6c.6-.3 1.1-.8 1.4-1.3l.7-1.1 3.1-5.2c.3-.6.5-1.3.5-2H20.3l2.4 4.7 3.3 4.9z"/>
+                      <path fill="#00832D" d="M16 10L21.7 0H10.3L4.6 10z"/>
+                      <path fill="#2684FC" d="M20.3 18l-4.3-8H4.1L11.4 18z"/>
+                      <path fill="#FFBA00" d="M26 27.6L20.3 18h11.4c0 .7-.2 1.4-.5 2l-3.1 5.2-.7 1.1c-.3.5-.8 1-1.4 1.3z"/>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); remove(d.id); }}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-background/90 shadow-sm transition hover:bg-destructive hover:text-destructive-foreground"
                     aria-label="Excluir"
+                    title="Excluir"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
