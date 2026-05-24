@@ -51,7 +51,10 @@ function escapeHtml(value: string): string {
 }
 
 function formatPlainTextAsAbntHtml(text: string): string {
-  const normalized = text.replace(/\r\n?/g, "\n").replace(/\u00a0/g, " ").trim();
+  const normalized = text
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .trim();
   if (!normalized) return "";
 
   return normalized
