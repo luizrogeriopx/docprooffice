@@ -245,10 +245,16 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
     let frame: number | null = null;
     let observer: ResizeObserver | null = null;
     let previousSignature = "";
+    let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const layout = () => {
       const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
       if (!prose) return;
+
+      // Disconnect observer temporarily to prevent resize loop during class toggling
+      if (observer) {
+        observer.disconnect();
+      }
 
       const styles = window.getComputedStyle(contentEl);
       const paddingTop = parseFloat(styles.paddingTop) || 0;
@@ -374,6 +380,10 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
           });
       } finally {
         prose.classList.remove("docpro-measuring-pagination");
+        // Reconnect observer
+        if (observer && prose) {
+          observer.observe(prose);
+        }
       }
 
       const signature = paginationBreaksSignature(autoBreaks);
@@ -399,7 +409,10 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
 
     const schedule = () => {
       if (frame !== null) cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(layout);
+      if (debounceTimeout !== null) clearTimeout(debounceTimeout);
+      debounceTimeout = setTimeout(() => {
+        frame = requestAnimationFrame(layout);
+      }, 100);
     };
 
     schedule();
@@ -418,6 +431,7 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
 
     return () => {
       if (frame !== null) cancelAnimationFrame(frame);
+      if (debounceTimeout !== null) clearTimeout(debounceTimeout);
       observer?.disconnect();
       if (editor) {
         editor.off("update", schedule);
