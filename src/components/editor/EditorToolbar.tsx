@@ -77,11 +77,17 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange }: Pr
     toast.success("Imagem enviada");
   };
 
-  const headingLevel = (() => {
+  const FONT_SIZES = ["8", "9", "10", "11", "12", "14", "16", "18", "20", "24", "28", "32", "36", "48", "60", "72"];
+
+  const currentFontSize = (() => {
+    const attrs = editor.getAttributes("textStyle") as { fontSize?: string };
+    if (attrs?.fontSize) return String(parseInt(attrs.fontSize, 10));
     for (const l of [1, 2, 3, 4, 5, 6] as const) {
-      if (editor.isActive("heading", { level: l })) return String(l);
+      if (editor.isActive("heading", { level: l })) {
+        return { 1: "32", 2: "24", 3: "20", 4: "16", 5: "14", 6: "12" }[l];
+      }
     }
-    return "p";
+    return "12";
   })();
 
   return (
@@ -91,21 +97,16 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange }: Pr
       <Separator orientation="vertical" className="mx-1 h-6" />
 
       <Select
-        value={headingLevel}
+        value={currentFontSize}
         onValueChange={(v) => {
-          if (v === "p") editor.chain().focus().setParagraph().run();
-          else editor.chain().focus().toggleHeading({ level: Number(v) as 1 | 2 | 3 | 4 | 5 | 6 }).run();
+          editor.chain().focus().setFontSize(`${v}pt`).run();
         }}
       >
-        <SelectTrigger className="h-8 w-[140px]"><SelectValue /></SelectTrigger>
+        <SelectTrigger className="h-8 w-[80px]" title="Tamanho do texto"><SelectValue /></SelectTrigger>
         <SelectContent>
-          <SelectItem value="p">Texto normal</SelectItem>
-          <SelectItem value="1">Título 1</SelectItem>
-          <SelectItem value="2">Título 2</SelectItem>
-          <SelectItem value="3">Título 3</SelectItem>
-          <SelectItem value="4">Título 4</SelectItem>
-          <SelectItem value="5">Título 5</SelectItem>
-          <SelectItem value="6">Título 6</SelectItem>
+          {FONT_SIZES.map((s) => (
+            <SelectItem key={s} value={s}>{s}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
 
