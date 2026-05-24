@@ -80,37 +80,6 @@ function DocumentPage() {
     content: "",
     editorProps: {
       transformPastedHTML: (html) => formatPastedHtmlAbnt(html),
-      transformPastedText: (text) => text,
-      handlePaste: (view, event) => {
-        const text = event.clipboardData?.getData("text/plain");
-        const html = event.clipboardData?.getData("text/html");
-        if (html) return false; // let transformPastedHTML handle it
-        if (text) {
-          const safe = text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-          const paragraphs = safe
-            .split(/\r?\n\r?\n+/)
-            .map(
-              (p) =>
-                `<p><span style="font-family: 'Times New Roman', Times, serif; font-size: 12pt;">${p.replace(/\r?\n/g, "<br>")}</span></p>`,
-            )
-            .join("");
-          view.dispatch(
-            view.state.tr.replaceSelectionWith(
-              // fallback: insert as HTML via DOMParser
-              view.state.schema.text(text),
-            ),
-          );
-          // Use commands to insert formatted html
-          event.preventDefault();
-          const { editor } = view as unknown as { editor?: ReturnType<typeof useEditor> };
-          editor?.commands.insertContent(paragraphs);
-          return true;
-        }
-        return false;
-      },
     },
     onUpdate: () => scheduleSave(),
   });
