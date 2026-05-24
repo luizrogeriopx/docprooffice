@@ -30,10 +30,7 @@ export const PageBreak = Node.create({
       insertPageBreak:
         () =>
         ({ commands }) =>
-          commands.insertContent([
-            { type: this.name },
-            { type: "paragraph" },
-          ]),
+          commands.insertContent([{ type: this.name }, { type: "paragraph" }]),
     } as Partial<RawCommands>;
   },
 });

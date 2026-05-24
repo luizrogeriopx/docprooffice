@@ -159,8 +159,9 @@ const A4_HEIGHT = 1123;
 function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<typeof useEditor> }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const [contentHeight, setContentHeight] = useState(A4_HEIGHT);
+  const [pageCount, setPageCount] = useState(1);
 
   useEffect(() => {
     const compute = () => {
@@ -177,36 +178,103 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
   }, []);
 
   useEffect(() => {
-    const el = pageRef.current;
-    if (!el) return;
-    const update = () => {
-      const h = el.scrollHeight;
-      const pages = Math.max(1, Math.ceil(h / A4_HEIGHT));
-      setContentHeight(pages * A4_HEIGHT);
+    const contentEl = contentRef.current;
+    if (!contentEl) return;
+
+    let frame: number | null = null;
+    let observer: ResizeObserver | null = null;
+
+    const layout = () => {
+      const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
+      if (!prose) return;
+
+      const styles = window.getComputedStyle(contentEl);
+      const paddingTop = parseFloat(styles.paddingTop) || 0;
+      const paddingBottom = parseFloat(styles.paddingBottom) || 0;
+      const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
+
+      breaks.forEach((pageBreak) => {
+        pageBreak.style.setProperty("--docpro-page-break-height", "0px");
+      });
+
+      breaks.forEach((pageBreak) => {
+        const y = pageBreak.offsetTop;
+        const absoluteY = paddingTop + y;
+        const pageIndex = Math.floor(Math.max(0, absoluteY - 1) / A4_HEIGHT);
+        const nextPageContentTop = (pageIndex + 1) * A4_HEIGHT + paddingTop;
+        const height = Math.max(40, nextPageContentTop - absoluteY);
+        pageBreak.style.setProperty("--docpro-page-break-height", `${height}px`);
+      });
+
+      const contentBottom = Array.from(prose.children).reduce((bottom, child) => {
+        if (!(child instanceof HTMLElement)) return bottom;
+        const childStyles = window.getComputedStyle(child);
+        const marginBottom = parseFloat(childStyles.marginBottom) || 0;
+        return Math.max(bottom, child.offsetTop + child.offsetHeight + marginBottom);
+      }, 0);
+      const measuredHeight = paddingTop + contentBottom + paddingBottom;
+      const pages = Math.max(1, Math.ceil(measuredHeight / A4_HEIGHT));
+      setPageCount((current) => (current === pages ? current : pages));
     };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [editor]);
+
+    const schedule = () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(layout);
+    };
+
+    schedule();
+    if (editor) {
+      editor.on("update", schedule);
+      editor.on("transaction", schedule);
+    }
+
+    const attachObserver = () => {
+      const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
+      if (!prose) return;
+      observer = new ResizeObserver(schedule);
+      observer.observe(prose);
+    };
+    requestAnimationFrame(attachObserver);
+
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      observer?.disconnect();
+      if (editor) {
+        editor.off("update", schedule);
+        editor.off("transaction", schedule);
+      }
+    };
+  }, [editor, abntMode]);
+
+  const contentHeight = pageCount * A4_HEIGHT;
 
   return (
     <div className="px-4 py-8 sm:px-6" ref={wrapRef}>
       <div style={{ width: A4_WIDTH * scale, height: contentHeight * scale, marginInline: "auto" }}>
         <div
           ref={pageRef}
-          className={`docpro-editor rounded-sm bg-page shadow-md ring-1 ring-black/5 ${abntMode}`}
+          className={`docpro-editor relative ${abntMode}`}
           style={{
             width: A4_WIDTH,
             height: contentHeight,
             transform: `scale(${scale})`,
             transformOrigin: "top left",
-            backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${A4_HEIGHT - 1}px, hsl(var(--border)) ${A4_HEIGHT - 1}px, hsl(var(--border)) ${A4_HEIGHT}px)`,
           }}
         >
+          {Array.from({ length: pageCount }).map((_, index) => (
+            <div
+              key={index}
+              aria-hidden="true"
+              className="pointer-events-none absolute left-0 w-full rounded-sm bg-page shadow-md ring-1 ring-border"
+              style={{ top: index * A4_HEIGHT, height: A4_HEIGHT }}
+            />
+          ))}
           <div
-            className={`docpro-page-content px-[96px] py-[96px] ${abntMode ? "abnt-page" : ""}`}
-            style={{ minHeight: A4_HEIGHT, width: A4_WIDTH }}
+            ref={contentRef}
+            className={`docpro-page-content relative z-10 px-[96px] py-[96px] ${
+              abntMode ? "abnt-page" : ""
+            }`}
+            style={{ minHeight: contentHeight, width: A4_WIDTH }}
           >
             <EditorContent editor={editor} />
           </div>
