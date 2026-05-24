@@ -292,75 +292,44 @@ function DocumentPage() {
 const A4_WIDTH = 794;
 const A4_HEIGHT = 1123;
 const A4_PAGE_GAP = 32;
+const PASTED_PARAGRAPH_TARGET_CHARS = 1200;
 
-function findLineStartPos(
-  view: EditorView,
-  block: HTMLElement,
-  lineTop: number,
-  blockStartPos: number,
-): number {
-  const text = block.textContent || "";
-  if (!text) return blockStartPos;
+function splitLongParagraph(block: string): string[] {
+  const normalized = block.replace(/\s+/g, " ").trim();
+  if (normalized.length <= PASTED_PARAGRAPH_TARGET_CHARS) return [normalized];
 
-  const textNodes: Text[] = [];
-  const walk = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
-  let node: Node | null;
-  while ((node = walk.nextNode())) {
-    textNodes.push(node as Text);
-  }
-  if (textNodes.length === 0) return blockStartPos;
+  const chunks: string[] = [];
+  const sentences = normalized.match(/[^.!?;:]+[.!?;:]?|\S+/g) ?? [normalized];
+  let current = "";
 
-  let low = 0;
-  let high = text.length - 1;
-  let bestPos = blockStartPos;
-  let minDiff = Infinity;
-
-  const range = document.createRange();
-
-  const getDOMPos = (index: number): { node: Text; offset: number } | null => {
-    let acc = 0;
-    for (const tNode of textNodes) {
-      if (index >= acc && index <= acc + tNode.length) {
-        return { node: tNode, offset: index - acc };
-      }
-      acc += tNode.length;
-    }
-    return null;
-  };
-
-  while (low <= high) {
-    const mid = Math.floor((low + high) / 2);
-    const domPos = getDOMPos(mid);
-    if (!domPos) break;
-
-    range.setStart(domPos.node, domPos.offset);
-    range.setEnd(domPos.node, Math.min(domPos.node.length, domPos.offset + 1));
-    const rects = range.getClientRects();
-
-    if (rects.length > 0) {
-      const rectTop = rects[0].top;
-      const diff = Math.abs(rectTop - lineTop);
-
-      if (diff < minDiff) {
-        minDiff = diff;
-        try {
-          bestPos = view.posAtDOM(domPos.node, domPos.offset);
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      if (rectTop < lineTop) {
-        low = mid + 1;
-      } else {
-        high = mid - 1;
-      }
+  sentences.forEach((sentence) => {
+    const next = sentence.trim();
+    if (!next) return;
+    if (current && `${current} ${next}`.length > PASTED_PARAGRAPH_TARGET_CHARS) {
+      chunks.push(current);
+      current = next;
     } else {
-      high = mid - 1;
+      current = current ? `${current} ${next}` : next;
     }
-  }
+  });
 
-  return bestPos;
+  if (current) chunks.push(current);
+  return chunks.flatMap((chunk) => {
+    if (chunk.length <= PASTED_PARAGRAPH_TARGET_CHARS * 1.25) return [chunk];
+    const parts: string[] = [];
+    const words = chunk.split(" ");
+    let currentPart = "";
+    words.forEach((word) => {
+      if (currentPart && `${currentPart} ${word}`.length > PASTED_PARAGRAPH_TARGET_CHARS) {
+        parts.push(currentPart);
+        currentPart = word;
+      } else {
+        currentPart = currentPart ? `${currentPart} ${word}` : word;
+      }
+    });
+    if (currentPart) parts.push(currentPart);
+    return parts;
+  });
 }
 
 function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<typeof useEditor> }) {
