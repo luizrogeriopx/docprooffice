@@ -173,7 +173,7 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange }: Pr
       >
         <SelectTrigger className="h-8 w-[80px]" title="Tamanho do texto"><SelectValue /></SelectTrigger>
         <SelectContent>
-          {FONT_SIZES.map((s) => (
+          {visibleFontSizes.map((s) => (
             <SelectItem key={s} value={s}>{s}</SelectItem>
           ))}
         </SelectContent>
