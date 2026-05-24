@@ -45,6 +45,37 @@ function Dashboard() {
     else setDocs(data as Doc[]);
   };
 
+  const shareUrlFor = (id: string) => `${window.location.origin}/doc/${id}`;
+  const shareText = (title: string, url: string) =>
+    `Confira o documento "${title}": ${url}`;
+
+  const shareWhatsApp = (doc: Doc, business = false) => {
+    const url = shareUrlFor(doc.id);
+    const text = encodeURIComponent(shareText(doc.title, url));
+    const target = business
+      ? `whatsapp://send?text=${text}`
+      : `https://wa.me/?text=${text}`;
+    window.open(target, "_blank");
+  };
+
+  const shareEmail = (doc: Doc) => {
+    const url = shareUrlFor(doc.id);
+    const subject = encodeURIComponent(`Documento: ${doc.title}`);
+    const body = encodeURIComponent(shareText(doc.title, url));
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
+
+  const shareDrive = async (doc: Doc) => {
+    const url = shareUrlFor(doc.id);
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copiado. Cole no Google Drive.");
+    } catch {
+      toast.error("Não foi possível copiar o link");
+    }
+    window.open("https://drive.google.com/drive/my-drive", "_blank");
+  };
+
   useEffect(() => { if (user) load(); }, [user]);
 
   const openCreate = () => setDialogOpen(true);
