@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { FileText, Plus, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { NewDocumentDialog } from "@/components/dashboard/NewDocumentDialog";
 
 interface Doc { id: string; title: string; updated_at: string; }
 
 export function DocumentsSidebar({ currentId, userId }: { currentId: string; userId: string }) {
   const [docs, setDocs] = useState<Doc[]>([]);
-  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
 
   const load = async () => {
     const { data } = await supabase.from("documents").select("id,title,updated_at").order("updated_at", { ascending: false }).limit(50);
@@ -25,15 +26,6 @@ export function DocumentsSidebar({ currentId, userId }: { currentId: string; use
     return () => { supabase.removeChannel(ch); };
   }, [currentId]);
 
-  const create = async () => {
-    const { data, error } = await supabase
-      .from("documents")
-      .insert({ user_id: userId, title: "Documento sem título" })
-      .select("id")
-      .single();
-    if (!error && data) navigate({ to: "/doc/$id", params: { id: data.id } });
-  };
-
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
       <div className="flex items-center gap-2 border-b px-3 py-2">
@@ -41,7 +33,7 @@ export function DocumentsSidebar({ currentId, userId }: { currentId: string; use
           <ChevronLeft className="h-4 w-4" />
         </Link>
         <span className="text-sm font-semibold">Documentos</span>
-        <Button size="sm" variant="ghost" className="ml-auto h-8 w-8 p-0" onClick={create} title="Novo">
+        <Button size="sm" variant="ghost" className="ml-auto h-8 w-8 p-0" onClick={() => setOpen(true)} title="Novo">
           <Plus className="h-4 w-4" />
         </Button>
       </div>
@@ -61,6 +53,7 @@ export function DocumentsSidebar({ currentId, userId }: { currentId: string; use
           </Link>
         ))}
       </div>
+      <NewDocumentDialog open={open} onOpenChange={setOpen} userId={userId} />
     </aside>
   );
 }

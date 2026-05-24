@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { FileText, Plus, Search, Trash2, LogOut, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { NewDocumentDialog } from "@/components/dashboard/NewDocumentDialog";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -21,7 +22,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const [docs, setDocs] = useState<Doc[]>([]);
   const [q, setQ] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
@@ -38,18 +39,7 @@ function Dashboard() {
 
   useEffect(() => { if (user) load(); }, [user]);
 
-  const create = async () => {
-    if (!user) return;
-    setBusy(true);
-    const { data, error } = await supabase
-      .from("documents")
-      .insert({ user_id: user.id, title: "Documento sem título" })
-      .select("id")
-      .single();
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    navigate({ to: "/doc/$id", params: { id: data.id } });
-  };
+  const openCreate = () => setDialogOpen(true);
 
   const remove = async (id: string) => {
     if (!confirm("Excluir este documento?")) return;
@@ -86,8 +76,8 @@ function Dashboard() {
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold">Meus documentos</h1>
-          <Button onClick={create} disabled={busy}>
-            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" />
             Novo documento
           </Button>
         </div>
@@ -101,7 +91,7 @@ function Dashboard() {
           <div className="mt-16 grid place-items-center rounded-xl border border-dashed bg-card p-12 text-center">
             <FileText className="h-10 w-10 text-muted-foreground" />
             <p className="mt-3 text-sm text-muted-foreground">Nenhum documento ainda. Crie o primeiro!</p>
-            <Button className="mt-4" onClick={create}><Plus className="mr-2 h-4 w-4" /> Novo documento</Button>
+            <Button className="mt-4" onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Novo documento</Button>
           </div>
         ) : (
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -130,6 +120,7 @@ function Dashboard() {
           </div>
         )}
       </main>
+      <NewDocumentDialog open={dialogOpen} onOpenChange={setDialogOpen} userId={user.id} />
     </div>
   );
 }

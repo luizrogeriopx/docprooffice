@@ -63,7 +63,13 @@ function DocumentPage() {
       const { data, error } = await supabase.from("documents").select("*").eq("id", id).maybeSingle();
       if (error || !data) { toast.error("Documento não encontrado"); navigate({ to: "/dashboard" }); return; }
       setTitle(data.title);
-      editor.commands.setContent((data.content as any) ?? "");
+      const json = data.content as any;
+      const isEmptyJson = !json || (json?.content?.length === 1 && !json.content[0]?.content);
+      if (isEmptyJson && data.content_html) {
+        editor.commands.setContent(data.content_html);
+      } else {
+        editor.commands.setContent(json ?? "");
+      }
       setDocLoaded(true);
     })();
   }, [user, editor, id]);
