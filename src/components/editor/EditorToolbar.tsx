@@ -6,7 +6,7 @@ import {
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Link as LinkIcon, Image as ImageIcon, Table as TableIcon,
   Heading1, Heading2, Heading3, Heading4, Heading5, Heading6,
-  Download, FileText,
+  Download, FileText, BookMarked, Check as CheckIcon,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
