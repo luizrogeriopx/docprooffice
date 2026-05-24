@@ -187,10 +187,11 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
 
   useEffect(() => {
     const contentEl = contentRef.current;
-    if (!contentEl) return;
+    if (!contentEl || !editor) return;
 
     let frame: number | null = null;
     let observer: ResizeObserver | null = null;
+    let previousSignature = "";
 
     const layout = () => {
       const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
@@ -201,11 +202,13 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
       const paddingBottom = parseFloat(styles.paddingBottom) || 0;
       const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
 
+      const existingBreaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-auto-page-break"));
+      existingBreaks.forEach((breakEl) => {
+        breakEl.style.setProperty("--docpro-auto-page-break-height", "0px");
+      });
+
       Array.from(prose.children).forEach((child) => {
         if (!(child instanceof HTMLElement)) return;
-        const originalMarginTop = child.dataset.docproOriginalMarginTop;
-        if (originalMarginTop !== undefined) child.style.marginTop = originalMarginTop;
-        delete child.dataset.docproOriginalMarginTop;
         if (child.classList.contains("docpro-page-break")) {
           child.style.setProperty("--docpro-page-break-height", "0px");
         }
@@ -220,23 +223,41 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         pageBreak.style.setProperty("--docpro-page-break-height", `${height}px`);
       });
 
-      Array.from(prose.children).forEach((child) => {
-        if (!(child instanceof HTMLElement) || child.classList.contains("docpro-page-break")) return;
-        const childStyles = window.getComputedStyle(child);
-        const marginTop = parseFloat(childStyles.marginTop) || 0;
-        const marginBottom = parseFloat(childStyles.marginBottom) || 0;
-        const y = paddingTop + child.offsetTop;
-        const bottom = y + child.offsetHeight + marginBottom;
-        const pageIndex = Math.floor(Math.max(0, y) / (A4_HEIGHT + A4_PAGE_GAP));
-        const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
-        
+      const autoBreaks: PaginationBreakSpec[] = [];
+      const textBlocks = Array.from(prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, blockquote, pre"))
+        .filter((block) => !block.closest(".docpro-page-break"));
 
-        if (y < pageBottom && bottom > pageBottom) {
-          const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-          child.dataset.docproOriginalMarginTop = child.style.marginTop;
-          child.style.marginTop = `${marginTop + Math.max(0, nextPageY - y)}px`;
+      textBlocks.forEach((block) => {
+        const range = document.createRange();
+        range.selectNodeContents(block);
+        const lineRects = Array.from(range.getClientRects())
+          .filter((rect) => rect.width > 0 && rect.height > 0)
+          .map((rect) => ({ top: rect.top - prose.getBoundingClientRect().top + paddingTop, bottom: rect.bottom - prose.getBoundingClientRect().top + paddingTop }));
+        range.detach();
+
+        if (lineRects.length === 0) return;
+
+        for (let index = 1; index < lineRects.length; index += 1) {
+          const previousLine = lineRects[index - 1];
+          const currentLine = lineRects[index];
+          const pageIndex = Math.floor(Math.max(0, previousLine.top) / (A4_HEIGHT + A4_PAGE_GAP));
+          const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
+
+          if (previousLine.bottom <= pageBottom && currentLine.bottom > pageBottom) {
+            const pos = editor.view.posAtDOM(block, 0);
+            const nextPageY = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+            autoBreaks.push({ pos, height: Math.max(0, nextPageY - currentLine.top) });
+            break;
+          }
         }
       });
+
+      const signature = paginationBreaksSignature(autoBreaks);
+      if (signature !== previousSignature) {
+        previousSignature = signature;
+        setPaginationBreaks(editor.view, autoBreaks);
+        return;
+      }
 
       const contentBottom = Array.from(prose.children).reduce((bottom, child) => {
         if (!(child instanceof HTMLElement)) return bottom;
