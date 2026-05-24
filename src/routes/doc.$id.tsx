@@ -396,79 +396,79 @@ function DocPage({ abntMode, editor }: { abntMode: string; editor: ReturnType<ty
         const renderedScale = prose.offsetWidth > 0 ? proseRect.width / prose.offsetWidth : scale;
         const visualScale = renderedScale > 0 ? renderedScale : 1;
 
-      Array.from(prose.children).forEach((child) => {
-        if (!(child instanceof HTMLElement)) return;
-        if (child.classList.contains("docpro-page-break")) {
-          child.style.setProperty("--docpro-page-break-height", "0px");
-        }
-      });
-
-      breaks.forEach((pageBreak) => {
-        const y = pageBreak.offsetTop;
-        const absoluteY = paddingTop + y;
-        const pageIndex = Math.floor(Math.max(0, absoluteY - 1) / (A4_HEIGHT + A4_PAGE_GAP));
-        const nextPageContentTop = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-        const height = Math.max(40, nextPageContentTop - absoluteY);
-        pageBreak.style.setProperty("--docpro-page-break-height", `${height}px`);
-      });
-
-      const autoBreaks: PaginationBreakSpec[] = [];
-      const flowBlocks = Array.from(prose.children).filter(
-        (child): child is HTMLElement =>
-          child instanceof HTMLElement &&
-          !child.classList.contains("docpro-auto-page-break") &&
-          !child.classList.contains("docpro-page-break"),
-      );
-      let measuredBottom = paddingTop + paddingBottom;
-
-      prose.classList.add("docpro-measuring-pagination");
-      try {
-        let accumulatedShift = 0;
-        flowBlocks.forEach((block) => {
-          const blockRect = block.getBoundingClientRect();
-          const blockTop =
-            (blockRect.top - proseRect.top) / visualScale + paddingTop + accumulatedShift;
-          const blockBottom =
-            (blockRect.bottom - proseRect.top) / visualScale + paddingTop + accumulatedShift;
-          const pageIndex = Math.floor(Math.max(0, blockTop) / (A4_HEIGHT + A4_PAGE_GAP));
-          const pageTop = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-          const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
-
-          if (blockBottom > pageBottom && blockTop > pageTop + 1) {
-            const pos = getBlockDocumentPosition(editor.view, block);
-            const nextPageTop = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-            const height = Math.max(0, nextPageTop - blockTop);
-            if (pos !== null && height > 0) {
-              autoBreaks.push({ pos, height });
-              accumulatedShift += height;
-              measuredBottom = Math.max(measuredBottom, blockBottom + height + paddingBottom);
-              return;
-            }
+        Array.from(prose.children).forEach((child) => {
+          if (!(child instanceof HTMLElement)) return;
+          if (child.classList.contains("docpro-page-break")) {
+            child.style.setProperty("--docpro-page-break-height", "0px");
           }
-
-          measuredBottom = Math.max(measuredBottom, blockBottom + paddingBottom);
         });
-      } finally {
-        prose.classList.remove("docpro-measuring-pagination");
-      }
 
-      autoBreaks.sort((a, b) => a.pos - b.pos || b.height - a.height);
+        breaks.forEach((pageBreak) => {
+          const y = pageBreak.offsetTop;
+          const absoluteY = paddingTop + y;
+          const pageIndex = Math.floor(Math.max(0, absoluteY - 1) / (A4_HEIGHT + A4_PAGE_GAP));
+          const nextPageContentTop = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+          const height = Math.max(40, nextPageContentTop - absoluteY);
+          pageBreak.style.setProperty("--docpro-page-break-height", `${height}px`);
+        });
 
-      const signature = paginationBreaksSignature(autoBreaks);
-      if (signature !== previousSignature) {
-        previousSignature = signature;
-        setPaginationBreaks(editor.view, autoBreaks);
-      }
+        const autoBreaks: PaginationBreakSpec[] = [];
+        const flowBlocks = Array.from(prose.children).filter(
+          (child): child is HTMLElement =>
+            child instanceof HTMLElement &&
+            !child.classList.contains("docpro-auto-page-break") &&
+            !child.classList.contains("docpro-page-break"),
+        );
+        let measuredBottom = paddingTop + paddingBottom;
 
-      const measuredHeight = measuredBottom;
-      const pages = Math.max(
-        1,
-        Math.floor(Math.max(0, measuredHeight - 1) / (A4_HEIGHT + A4_PAGE_GAP)) + 1,
-      );
-      if (pageCountRef.current !== pages) {
-        pageCountRef.current = pages;
-        setPageCount(pages);
-      }
+        prose.classList.add("docpro-measuring-pagination");
+        try {
+          let accumulatedShift = 0;
+          flowBlocks.forEach((block) => {
+            const blockRect = block.getBoundingClientRect();
+            const blockTop =
+              (blockRect.top - proseRect.top) / visualScale + paddingTop + accumulatedShift;
+            const blockBottom =
+              (blockRect.bottom - proseRect.top) / visualScale + paddingTop + accumulatedShift;
+            const pageIndex = Math.floor(Math.max(0, blockTop) / (A4_HEIGHT + A4_PAGE_GAP));
+            const pageTop = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+            const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
+
+            if (blockBottom > pageBottom && blockTop > pageTop + 1) {
+              const pos = getBlockDocumentPosition(editor.view, block);
+              const nextPageTop = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+              const height = Math.max(0, nextPageTop - blockTop);
+              if (pos !== null && height > 0) {
+                autoBreaks.push({ pos, height });
+                accumulatedShift += height;
+                measuredBottom = Math.max(measuredBottom, blockBottom + height + paddingBottom);
+                return;
+              }
+            }
+
+            measuredBottom = Math.max(measuredBottom, blockBottom + paddingBottom);
+          });
+        } finally {
+          prose.classList.remove("docpro-measuring-pagination");
+        }
+
+        autoBreaks.sort((a, b) => a.pos - b.pos || b.height - a.height);
+
+        const signature = paginationBreaksSignature(autoBreaks);
+        if (signature !== previousSignature) {
+          previousSignature = signature;
+          setPaginationBreaks(editor.view, autoBreaks);
+        }
+
+        const measuredHeight = measuredBottom;
+        const pages = Math.max(
+          1,
+          Math.floor(Math.max(0, measuredHeight - 1) / (A4_HEIGHT + A4_PAGE_GAP)) + 1,
+        );
+        if (pageCountRef.current !== pages) {
+          pageCountRef.current = pages;
+          setPageCount(pages);
+        }
       } finally {
         isPaginating = false;
       }
