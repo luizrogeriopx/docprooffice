@@ -29,8 +29,11 @@ import {
   FilePlus,
   Settings2,
   Check as CheckIcon,
+  Baseline,
+  Highlighter,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
