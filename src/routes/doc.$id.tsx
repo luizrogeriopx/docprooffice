@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
+import type { JSONContent } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import LinkExt from "@tiptap/extension-link";
@@ -28,6 +29,7 @@ import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { AiSidebar } from "@/components/editor/AiSidebar";
 import { DocumentsSidebar } from "@/components/editor/DocumentsSidebar";
 import { toast } from "sonner";
+import type { Json } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/doc/$id")({
   component: DocumentPage,
@@ -91,7 +93,7 @@ function DocumentPage() {
         return;
       }
       setTitle(data.title);
-      const json = data.content as any;
+      const json = data.content as JSONContent | null;
       const isEmptyJson = !json || (json?.content?.length === 1 && !json.content[0]?.content);
       if (isEmptyJson && data.content_html) {
         editor.commands.setContent(data.content_html);
@@ -115,7 +117,7 @@ function DocumentPage() {
     if (!editor) return;
     const { error } = await supabase
       .from("documents")
-      .update({ title, content: editor.getJSON() as any, content_html: editor.getHTML() })
+      .update({ title, content: editor.getJSON() as Json, content_html: editor.getHTML() })
       .eq("id", id);
     if (error) {
       setStatus("error");
@@ -131,7 +133,7 @@ function DocumentPage() {
     await supabase.from("document_history").insert({
       document_id: id,
       user_id: user.id,
-      content: editor.getJSON() as any,
+      content: editor.getJSON() as Json,
     });
   };
 
