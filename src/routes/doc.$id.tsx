@@ -61,6 +61,7 @@ function formatPlainTextAsAbntHtml(text: string): string {
     .split(/\n{2,}/)
     .map((block) => block.replace(/\n+/g, " ").replace(/\s+/g, " ").trim())
     .filter(Boolean)
+    .flatMap(splitLongParagraph)
     .map((block) => `<p><span style="${ABNT_FONT_STYLE}">${escapeHtml(block)}</span></p>`)
     .join("");
 }
