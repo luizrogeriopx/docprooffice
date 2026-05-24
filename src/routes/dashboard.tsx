@@ -76,8 +76,8 @@ function Dashboard() {
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold">Meus documentos</h1>
-          <Button onClick={create} disabled={busy}>
-            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" />
             Novo documento
           </Button>
         </div>
@@ -91,7 +91,7 @@ function Dashboard() {
           <div className="mt-16 grid place-items-center rounded-xl border border-dashed bg-card p-12 text-center">
             <FileText className="h-10 w-10 text-muted-foreground" />
             <p className="mt-3 text-sm text-muted-foreground">Nenhum documento ainda. Crie o primeiro!</p>
-            <Button className="mt-4" onClick={create}><Plus className="mr-2 h-4 w-4" /> Novo documento</Button>
+            <Button className="mt-4" onClick={openCreate}><Plus className="mr-2 h-4 w-4" /> Novo documento</Button>
           </div>
         ) : (
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
