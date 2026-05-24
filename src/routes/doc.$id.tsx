@@ -570,6 +570,15 @@ function DocPage({
             style={{ minHeight: contentHeight, width: A4_WIDTH }}
           >
             <EditorContent editor={editor} />
+            <PageOverlays
+              settings={pageSettings}
+              pageCount={pageCount}
+              pageStride={pageStride}
+              pageHeight={A4_HEIGHT}
+              pageWidth={A4_WIDTH}
+              marginX={96}
+              marginY={96}
+            />
           </div>
         </div>
       </div>
