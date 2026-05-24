@@ -111,9 +111,23 @@
   font-size: 12pt;
   line-height: 1.5;
   color: oklch(0.2 0.01 260);
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 .docpro-editor .ProseMirror p {
   margin: 0 0 0.5em;
+}
+.docpro-editor .ProseMirror p,
+.docpro-editor .ProseMirror li,
+.docpro-editor .ProseMirror h1,
+.docpro-editor .ProseMirror h2,
+.docpro-editor .ProseMirror h3,
+.docpro-editor .ProseMirror h4,
+.docpro-editor .ProseMirror h5,
+.docpro-editor .ProseMirror h6,
+.docpro-editor .ProseMirror pre {
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 .docpro-editor .ProseMirror h1 {
   font-size: 2em;
