@@ -29,7 +29,7 @@ function SharePage() {
       const docId = row.document_id as string;
 
       if (mode === "view") {
-        navigate({ to: "/doc/$id", params: { id: docId }, search: { v: 1 } as never });
+        navigate({ to: "/doc/$id", params: { id: docId } });
         return;
       }
 
