@@ -29,7 +29,9 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Loader2, FileText, Cloud, CloudOff, Check } from "lucide-react";
+import { Loader2, FileText, Cloud, CloudOff, Check, Share2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ShareDialog } from "@/components/ShareDialog";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { AiSidebar } from "@/components/editor/AiSidebar";
 import { DocumentsSidebar } from "@/components/editor/DocumentsSidebar";
