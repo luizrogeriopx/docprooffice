@@ -14,6 +14,32 @@ export type Database = {
   }
   public: {
     Tables: {
+      document_collaborators: {
+        Row: {
+          added_at: string
+          document_id: string
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          document_id: string
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          document_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_collaborators_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_history: {
         Row: {
           content: Json
@@ -103,15 +129,84 @@ export type Database = {
         }
         Relationships: []
       }
+      share_links: {
+        Row: {
+          created_at: string
+          document_id: string
+          id: string
+          mode: Database["public"]["Enums"]["share_mode"]
+          owner_id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          id?: string
+          mode: Database["public"]["Enums"]["share_mode"]
+          owner_id: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          id?: string
+          mode?: Database["public"]["Enums"]["share_mode"]
+          owner_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_links_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      accept_collab_invite: { Args: { _token: string }; Returns: string }
+      document_has_link: {
+        Args: {
+          _doc: string
+          _modes: Database["public"]["Enums"]["share_mode"][]
+        }
+        Returns: boolean
+      }
+      fork_document: { Args: { _token: string }; Returns: string }
+      get_share_link: {
+        Args: { _token: string }
+        Returns: {
+          document_id: string
+          mode: Database["public"]["Enums"]["share_mode"]
+          owner_id: string
+          title: string
+        }[]
+      }
+      is_document_collaborator: {
+        Args: { _doc: string; _user: string }
+        Returns: boolean
+      }
+      is_document_owner: {
+        Args: { _doc: string; _user: string }
+        Returns: boolean
+      }
+      list_collaborators: {
+        Args: { _doc: string }
+        Returns: {
+          added_at: string
+          email: string
+          full_name: string
+          user_id: string
+        }[]
+      }
     }
     Enums: {
-      [_ in never]: never
+      share_mode: "view" | "fork" | "collab"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -238,6 +333,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      share_mode: ["view", "fork", "collab"],
+    },
   },
 } as const
