@@ -551,8 +551,8 @@ function DocPage({
       if (frame !== null) cancelAnimationFrame(frame);
       if (debounceTimeout !== null) clearTimeout(debounceTimeout);
       if (editor) {
-        editor.off("update", schedule);
-        editor.off("transaction", schedule);
+        editor.off("update", scheduleEvt);
+        editor.off("transaction", scheduleEvt);
       }
       resizeObserver.disconnect();
       contentEl.removeEventListener("load", onImgLoad, true);
