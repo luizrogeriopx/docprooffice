@@ -23,7 +23,7 @@ export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Meus documentos — DocPro" }] }),
 });
 
-interface Doc { id: string; title: string; updated_at: string; }
+interface Doc { id: string; title: string; updated_at: string; content_html: string | null; }
 
 function Dashboard() {
   const { user, loading, signOut } = useAuth();
@@ -39,7 +39,7 @@ function Dashboard() {
   const load = async () => {
     const { data, error } = await supabase
       .from("documents")
-      .select("id,title,updated_at")
+      .select("id,title,updated_at,content_html")
       .order("updated_at", { ascending: false });
     if (error) toast.error(error.message);
     else setDocs(data as Doc[]);
