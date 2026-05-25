@@ -137,18 +137,20 @@ function Dashboard() {
             {filtered.map((d) => (
               <div key={d.id} className="group relative overflow-hidden rounded-lg border bg-card transition hover:shadow-md">
                 <Link to="/doc/$id" params={{ id: d.id }} className="block">
-                  <div className="relative h-48 overflow-hidden border-b bg-[#f3f4f6]">
-                    {d.content_html ? (
+                  <div className="relative h-48 overflow-hidden border-b bg-[#e5e7eb]">
+                    {d.content_html && d.content_html.trim() ? (
                       <div
                         aria-hidden="true"
-                        className="pointer-events-none absolute left-1/2 top-0 origin-top -translate-x-1/2 bg-white shadow-sm"
+                        className="docpro-card-preview pointer-events-none absolute left-0 top-0 bg-white"
                         style={{
                           width: 794,
-                          minHeight: 1123,
-                          padding: "96px",
-                          transform: "translateX(-50%) scale(0.36)",
+                          height: 1123,
+                          padding: "72px 96px",
+                          transform: "scale(0.36)",
+                          transformOrigin: "top left",
                           fontFamily: "'Times New Roman', Times, serif",
                           fontSize: "12pt",
+                          lineHeight: 1.4,
                           color: "#111",
                         }}
                         dangerouslySetInnerHTML={{ __html: d.content_html }}
