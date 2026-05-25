@@ -132,9 +132,17 @@ function Dashboard() {
                     </div>
                   </div>
                 </Link>
-                <div className="absolute right-2 top-2">
+                <div className="absolute right-2 top-2 flex gap-1">
                   <button
-                    onClick={(e) => { e.stopPropagation(); remove(d.id); }}
+                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); setShareDoc(d); }}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-background/90 shadow-sm transition hover:bg-primary hover:text-primary-foreground"
+                    aria-label="Compartilhar"
+                    title="Compartilhar"
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); remove(d.id); }}
                     className="grid h-8 w-8 place-items-center rounded-md bg-background/90 shadow-sm transition hover:bg-destructive hover:text-destructive-foreground"
                     aria-label="Excluir"
                     title="Excluir"
@@ -148,6 +156,14 @@ function Dashboard() {
         )}
       </main>
       <NewDocumentDialog open={dialogOpen} onOpenChange={setDialogOpen} userId={user.id} />
+      {shareDoc && (
+        <ShareDialog
+          open={!!shareDoc}
+          onOpenChange={(v) => !v && setShareDoc(null)}
+          documentId={shareDoc.id}
+          documentTitle={shareDoc.title}
+        />
+      )}
     </div>
   );
 }
