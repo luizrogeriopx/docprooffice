@@ -67,10 +67,31 @@ function Dashboard() {
   const openCreate = () => setDialogOpen(true);
 
   const remove = async (id: string) => {
-    if (!confirm("Excluir este documento?")) return;
-    const { error } = await supabase.from("documents").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Documento excluído"); load(); }
+    if (!user) return;
+    // Verifica se sou dono do documento
+    const { data: ownRow } = await supabase
+      .from("documents")
+      .select("user_id")
+      .eq("id", id)
+      .maybeSingle();
+    const isOwner = ownRow?.user_id === user.id;
+
+    if (isOwner) {
+      if (!confirm("Excluir este documento? Esta ação não pode ser desfeita.")) return;
+      const { error } = await supabase.from("documents").delete().eq("id", id);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Documento excluído");
+    } else {
+      if (!confirm("Remover este documento compartilhado da sua lista?")) return;
+      const { error } = await supabase
+        .from("document_collaborators")
+        .delete()
+        .eq("document_id", id)
+        .eq("user_id", user.id);
+      if (error) { toast.error(error.message); return; }
+      toast.success("Você saiu da colaboração");
+    }
+    load();
   };
 
   if (loading || !user) {
