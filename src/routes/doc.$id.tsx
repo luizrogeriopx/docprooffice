@@ -334,20 +334,33 @@ function DocumentPage() {
               <CloudOff className="h-3.5 w-3.5 text-destructive" /> Erro ao salvar
             </>
           )}
+          {role === "owner" && (
+            <Button variant="outline" size="sm" className="ml-2" onClick={() => setShareOpen(true)}>
+              <Share2 className="mr-2 h-3.5 w-3.5" /> Compartilhar
+            </Button>
+          )}
+          {role === "viewer" && (
+            <span className="ml-2 rounded-md bg-muted px-2 py-0.5 text-xs">Somente leitura</span>
+          )}
+          {role === "collab" && (
+            <span className="ml-2 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">Colaborando</span>
+          )}
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <DocumentsSidebar currentId={id} userId={user.id} />
+        {user && role !== "viewer" && <DocumentsSidebar currentId={id} userId={user.id} />}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <EditorToolbar
-            editor={editor}
-            title={title}
-            abntMode={abntMode}
-            onAbntChange={setAbntMode}
-            onOpenPageSettings={() => setPageSettingsOpen(true)}
-          />
+          {role !== "viewer" && (
+            <EditorToolbar
+              editor={editor}
+              title={title}
+              abntMode={abntMode}
+              onAbntChange={setAbntMode}
+              onOpenPageSettings={() => setPageSettingsOpen(true)}
+            />
+          )}
           <div
             className="flex-1 overflow-auto overscroll-contain"
             style={
