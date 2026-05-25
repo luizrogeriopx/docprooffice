@@ -514,10 +514,12 @@ function DocPage({
       }
     };
 
-    const schedule = () => {
+    const schedule = (force = false) => {
       if (isPaginating) return;
-      const docSignature = `${editor.state.doc.content.size}:${editor.state.doc.childCount}:${abntMode}:${scale}`;
-      if (docSignature === lastDocSignature) return;
+      const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
+      const measuredHeight = prose?.scrollHeight ?? 0;
+      const docSignature = `${editor.state.doc.content.size}:${editor.state.doc.childCount}:${abntMode}:${scale}:${measuredHeight}`;
+      if (!force && docSignature === lastDocSignature) return;
       lastDocSignature = docSignature;
       if (frame !== null) cancelAnimationFrame(frame);
       if (debounceTimeout !== null) clearTimeout(debounceTimeout);
@@ -532,6 +534,18 @@ function DocPage({
       editor.on("transaction", schedule);
     }
 
+    // Re-paginate when the rendered size changes (image load, resize, font swap).
+    const resizeObserver = new ResizeObserver(() => schedule());
+    resizeObserver.observe(contentEl);
+    const proseEl = contentEl.querySelector<HTMLElement>(".ProseMirror");
+    if (proseEl) resizeObserver.observe(proseEl);
+
+    // Image load events (capture phase to catch nested <img>).
+    const onImgLoad = (e: Event) => {
+      if ((e.target as HTMLElement)?.tagName === "IMG") schedule(true);
+    };
+    contentEl.addEventListener("load", onImgLoad, true);
+
     return () => {
       if (frame !== null) cancelAnimationFrame(frame);
       if (debounceTimeout !== null) clearTimeout(debounceTimeout);
@@ -539,6 +553,8 @@ function DocPage({
         editor.off("update", schedule);
         editor.off("transaction", schedule);
       }
+      resizeObserver.disconnect();
+      contentEl.removeEventListener("load", onImgLoad, true);
     };
   }, [editor, abntMode, scale]);
 
