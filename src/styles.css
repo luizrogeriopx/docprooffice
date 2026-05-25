@@ -487,3 +487,15 @@
   pointer-events: none !important;
   visibility: hidden !important;
 }
+
+/* Document card preview (dashboard thumbnails) */
+.docpro-card-preview h1 { font-size: 22pt; font-weight: 700; margin: 0 0 12px; line-height: 1.2; }
+.docpro-card-preview h2 { font-size: 16pt; font-weight: 700; margin: 14px 0 8px; line-height: 1.2; }
+.docpro-card-preview h3 { font-size: 14pt; font-weight: 700; margin: 12px 0 6px; line-height: 1.2; }
+.docpro-card-preview p { margin: 0 0 8px; }
+.docpro-card-preview ul, .docpro-card-preview ol { margin: 0 0 8px 24px; padding: 0; }
+.docpro-card-preview li { margin: 0 0 4px; list-style: revert; }
+.docpro-card-preview img { max-width: 100%; height: auto; display: inline-block; }
+.docpro-card-preview table { border-collapse: collapse; }
+.docpro-card-preview table td, .docpro-card-preview table th { border: 1px solid #d1d5db; padding: 4px 8px; }
+.docpro-card-preview a { color: inherit; text-decoration: underline; }
