@@ -24,6 +24,7 @@ function Dashboard() {
   const [docs, setDocs] = useState<Doc[]>([]);
   const [q, setQ] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [shareDoc, setShareDoc] = useState<Doc | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
