@@ -183,7 +183,7 @@ function DocumentPage() {
 
   // Load doc
   useEffect(() => {
-    if (!user || !editor) return;
+    if (loading || !editor) return;
     (async () => {
       const { data, error } = await supabase
         .from("documents")
@@ -192,23 +192,67 @@ function DocumentPage() {
         .maybeSingle();
       if (error || !data) {
         toast.error("Documento não encontrado");
-        navigate({ to: "/dashboard" });
+        navigate({ to: user ? "/dashboard" : "/" });
         return;
       }
+      // determine role
+      let r: "owner" | "collab" | "viewer" = "viewer";
+      if (user && data.user_id === user.id) r = "owner";
+      else if (user) {
+        const { data: c } = await supabase
+          .from("document_collaborators")
+          .select("user_id")
+          .eq("document_id", id)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (c) r = "collab";
+      }
+      setRole(r);
+
       setTitle(data.title);
       const json = data.content as JSONContent | null;
       const isEmptyJson = !json || (json?.content?.length === 1 && !json.content[0]?.content);
+      applyingRemoteRef.current = true;
       if (isEmptyJson && data.content_html) {
         editor.commands.setContent(data.content_html);
       } else {
         editor.commands.setContent(json ?? "");
       }
+      lastSavedHtmlRef.current = editor.getHTML();
+      applyingRemoteRef.current = false;
+      editor.setEditable(r !== "viewer");
       setDocLoaded(true);
     })();
-  }, [user, editor, id]);
+  }, [loading, user, editor, id]);
+
+  // Realtime sync for collaborators / owner
+  useEffect(() => {
+    if (!docLoaded || !editor || role === "viewer") return;
+    const ch = supabase
+      .channel(`doc-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "documents", filter: `id=eq.${id}` },
+        (payload) => {
+          const newHtml = (payload.new as { content_html?: string }).content_html ?? "";
+          if (!newHtml || newHtml === lastSavedHtmlRef.current) return;
+          if (status === "saving") return; // don't clobber local edits in flight
+          applyingRemoteRef.current = true;
+          const { from, to } = editor.state.selection;
+          editor.commands.setContent(newHtml, { emitUpdate: false });
+          try { editor.commands.setTextSelection({ from, to }); } catch {}
+          lastSavedHtmlRef.current = newHtml;
+          applyingRemoteRef.current = false;
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [docLoaded, editor, id, role, status]);
 
   const scheduleSave = () => {
     if (!editor || !docLoaded) return;
+    if (applyingRemoteRef.current) return;
+    if (role === "viewer") return;
     setStatus("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(save, 800);
@@ -218,14 +262,17 @@ function DocumentPage() {
 
   const save = async () => {
     if (!editor) return;
-    const { error } = await supabase
-      .from("documents")
-      .update({ title, content: editor.getJSON() as Json, content_html: editor.getHTML() })
-      .eq("id", id);
+    if (role === "viewer") return;
+    const html = editor.getHTML();
+    const updates: { title: string; content: Json; content_html: string } = {
+      title, content: editor.getJSON() as Json, content_html: html,
+    };
+    const { error } = await supabase.from("documents").update(updates).eq("id", id);
     if (error) {
       setStatus("error");
       toast.error("Erro ao salvar");
     } else {
+      lastSavedHtmlRef.current = html;
       setStatus("saved");
       setSavedAt(new Date());
     }
@@ -242,16 +289,17 @@ function DocumentPage() {
 
   // Save on title change
   useEffect(() => {
-    if (docLoaded) scheduleSave(); /* eslint-disable-next-line */
+    if (docLoaded && role !== "viewer") scheduleSave(); /* eslint-disable-next-line */
   }, [title]);
 
-  if (loading || !user) {
+  if (loading) {
     return (
       <div className="grid min-h-screen place-items-center bg-canvas">
         <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
   }
+
 
   return (
     <div className="flex h-screen flex-col bg-canvas">
