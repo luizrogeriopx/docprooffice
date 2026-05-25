@@ -528,10 +528,11 @@ function DocPage({
       }, 180);
     };
 
+    const scheduleEvt = () => schedule();
     schedule();
     if (editor) {
-      editor.on("update", schedule);
-      editor.on("transaction", schedule);
+      editor.on("update", scheduleEvt);
+      editor.on("transaction", scheduleEvt);
     }
 
     // Re-paginate when the rendered size changes (image load, resize, font swap).
