@@ -23,7 +23,12 @@ function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/dashboard" });
+    if (!loading && user) {
+      let next: string | null = null;
+      try { next = sessionStorage.getItem("postLoginRedirect"); sessionStorage.removeItem("postLoginRedirect"); } catch {}
+      if (next) navigate({ to: next });
+      else navigate({ to: "/dashboard" });
+    }
   }, [user, loading, navigate]);
 
   const submit = async (e: React.FormEvent) => {

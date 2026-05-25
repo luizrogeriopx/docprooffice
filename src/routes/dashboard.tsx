@@ -5,18 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { FileText, Plus, Search, Trash2, LogOut, Loader2, Share2, Mail, MessageCircle, HardDrive, Briefcase } from "lucide-react";
+import { FileText, Plus, Search, Trash2, LogOut, Loader2, Share2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { NewDocumentDialog } from "@/components/dashboard/NewDocumentDialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ShareDialog } from "@/components/ShareDialog";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -31,6 +24,7 @@ function Dashboard() {
   const [docs, setDocs] = useState<Doc[]>([]);
   const [q, setQ] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [shareDoc, setShareDoc] = useState<Doc | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
@@ -45,36 +39,6 @@ function Dashboard() {
     else setDocs(data as Doc[]);
   };
 
-  const shareUrlFor = (id: string) => `${window.location.origin}/doc/${id}`;
-  const shareText = (title: string, url: string) =>
-    `Confira o documento "${title}": ${url}`;
-
-  const shareWhatsApp = (doc: Doc, business = false) => {
-    const url = shareUrlFor(doc.id);
-    const text = encodeURIComponent(shareText(doc.title, url));
-    const target = business
-      ? `whatsapp://send?text=${text}`
-      : `https://wa.me/?text=${text}`;
-    window.open(target, "_blank");
-  };
-
-  const shareEmail = (doc: Doc) => {
-    const url = shareUrlFor(doc.id);
-    const subject = encodeURIComponent(`Documento: ${doc.title}`);
-    const body = encodeURIComponent(shareText(doc.title, url));
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
-  };
-
-  const shareDrive = async (doc: Doc) => {
-    const url = shareUrlFor(doc.id);
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copiado. Cole no Google Drive.");
-    } catch {
-      toast.error("Não foi possível copiar o link");
-    }
-    window.open("https://drive.google.com/drive/my-drive", "_blank");
-  };
 
   useEffect(() => { if (user) load(); }, [user]);
 
@@ -168,9 +132,17 @@ function Dashboard() {
                     </div>
                   </div>
                 </Link>
-                <div className="absolute right-2 top-2">
+                <div className="absolute right-2 top-2 flex gap-1">
                   <button
-                    onClick={(e) => { e.stopPropagation(); remove(d.id); }}
+                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); setShareDoc(d); }}
+                    className="grid h-8 w-8 place-items-center rounded-md bg-background/90 shadow-sm transition hover:bg-primary hover:text-primary-foreground"
+                    aria-label="Compartilhar"
+                    title="Compartilhar"
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); remove(d.id); }}
                     className="grid h-8 w-8 place-items-center rounded-md bg-background/90 shadow-sm transition hover:bg-destructive hover:text-destructive-foreground"
                     aria-label="Excluir"
                     title="Excluir"
@@ -184,6 +156,14 @@ function Dashboard() {
         )}
       </main>
       <NewDocumentDialog open={dialogOpen} onOpenChange={setDialogOpen} userId={user.id} />
+      {shareDoc && (
+        <ShareDialog
+          open={!!shareDoc}
+          onOpenChange={(v) => !v && setShareDoc(null)}
+          documentId={shareDoc.id}
+          documentTitle={shareDoc.title}
+        />
+      )}
     </div>
   );
 }

@@ -29,7 +29,9 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Loader2, FileText, Cloud, CloudOff, Check } from "lucide-react";
+import { Loader2, FileText, Cloud, CloudOff, Check, Share2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ShareDialog } from "@/components/ShareDialog";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { AiSidebar } from "@/components/editor/AiSidebar";
 import { DocumentsSidebar } from "@/components/editor/DocumentsSidebar";
@@ -117,12 +119,14 @@ function DocumentPage() {
   const [abntMode, setAbntMode] = useState<string>(""); // "", "abnt", "abnt abnt-arial", "abnt abnt-references", "abnt abnt-cover"
   const [pageSettings, setPageSettings] = useState<PageSettings>(DEFAULT_PAGE_SETTINGS);
   const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [role, setRole] = useState<"owner" | "collab" | "viewer">("viewer");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const applyingRemoteRef = useRef(false);
+  const lastSavedHtmlRef = useRef<string>("");
 
-  useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
-  }, [user, loading, navigate]);
+  // Note: login no longer forced — view links work for anonymous users.
 
   // Load page settings (footer / page numbers / watermark)
   useEffect(() => {
@@ -181,7 +185,7 @@ function DocumentPage() {
 
   // Load doc
   useEffect(() => {
-    if (!user || !editor) return;
+    if (loading || !editor) return;
     (async () => {
       const { data, error } = await supabase
         .from("documents")
@@ -190,23 +194,67 @@ function DocumentPage() {
         .maybeSingle();
       if (error || !data) {
         toast.error("Documento não encontrado");
-        navigate({ to: "/dashboard" });
+        navigate({ to: user ? "/dashboard" : "/" });
         return;
       }
+      // determine role
+      let r: "owner" | "collab" | "viewer" = "viewer";
+      if (user && data.user_id === user.id) r = "owner";
+      else if (user) {
+        const { data: c } = await supabase
+          .from("document_collaborators")
+          .select("user_id")
+          .eq("document_id", id)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (c) r = "collab";
+      }
+      setRole(r);
+
       setTitle(data.title);
       const json = data.content as JSONContent | null;
       const isEmptyJson = !json || (json?.content?.length === 1 && !json.content[0]?.content);
+      applyingRemoteRef.current = true;
       if (isEmptyJson && data.content_html) {
         editor.commands.setContent(data.content_html);
       } else {
         editor.commands.setContent(json ?? "");
       }
+      lastSavedHtmlRef.current = editor.getHTML();
+      applyingRemoteRef.current = false;
+      editor.setEditable(r !== "viewer");
       setDocLoaded(true);
     })();
-  }, [user, editor, id]);
+  }, [loading, user, editor, id]);
+
+  // Realtime sync for collaborators / owner
+  useEffect(() => {
+    if (!docLoaded || !editor || role === "viewer") return;
+    const ch = supabase
+      .channel(`doc-${id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "documents", filter: `id=eq.${id}` },
+        (payload) => {
+          const newHtml = (payload.new as { content_html?: string }).content_html ?? "";
+          if (!newHtml || newHtml === lastSavedHtmlRef.current) return;
+          if (status === "saving") return; // don't clobber local edits in flight
+          applyingRemoteRef.current = true;
+          const { from, to } = editor.state.selection;
+          editor.commands.setContent(newHtml, { emitUpdate: false });
+          try { editor.commands.setTextSelection({ from, to }); } catch {}
+          lastSavedHtmlRef.current = newHtml;
+          applyingRemoteRef.current = false;
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [docLoaded, editor, id, role, status]);
 
   const scheduleSave = () => {
     if (!editor || !docLoaded) return;
+    if (applyingRemoteRef.current) return;
+    if (role === "viewer") return;
     setStatus("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(save, 800);
@@ -216,14 +264,17 @@ function DocumentPage() {
 
   const save = async () => {
     if (!editor) return;
-    const { error } = await supabase
-      .from("documents")
-      .update({ title, content: editor.getJSON() as Json, content_html: editor.getHTML() })
-      .eq("id", id);
+    if (role === "viewer") return;
+    const html = editor.getHTML();
+    const updates: { title: string; content: Json; content_html: string } = {
+      title, content: editor.getJSON() as Json, content_html: html,
+    };
+    const { error } = await supabase.from("documents").update(updates).eq("id", id);
     if (error) {
       setStatus("error");
       toast.error("Erro ao salvar");
     } else {
+      lastSavedHtmlRef.current = html;
       setStatus("saved");
       setSavedAt(new Date());
     }
@@ -240,16 +291,17 @@ function DocumentPage() {
 
   // Save on title change
   useEffect(() => {
-    if (docLoaded) scheduleSave(); /* eslint-disable-next-line */
+    if (docLoaded && role !== "viewer") scheduleSave(); /* eslint-disable-next-line */
   }, [title]);
 
-  if (loading || !user) {
+  if (loading) {
     return (
       <div className="grid min-h-screen place-items-center bg-canvas">
         <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
   }
+
 
   return (
     <div className="flex h-screen flex-col bg-canvas">
@@ -282,20 +334,33 @@ function DocumentPage() {
               <CloudOff className="h-3.5 w-3.5 text-destructive" /> Erro ao salvar
             </>
           )}
+          {role === "owner" && (
+            <Button variant="outline" size="sm" className="ml-2" onClick={() => setShareOpen(true)}>
+              <Share2 className="mr-2 h-3.5 w-3.5" /> Compartilhar
+            </Button>
+          )}
+          {role === "viewer" && (
+            <span className="ml-2 rounded-md bg-muted px-2 py-0.5 text-xs">Somente leitura</span>
+          )}
+          {role === "collab" && (
+            <span className="ml-2 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">Colaborando</span>
+          )}
         </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <DocumentsSidebar currentId={id} userId={user.id} />
+        {user && role !== "viewer" && <DocumentsSidebar currentId={id} userId={user.id} />}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <EditorToolbar
-            editor={editor}
-            title={title}
-            abntMode={abntMode}
-            onAbntChange={setAbntMode}
-            onOpenPageSettings={() => setPageSettingsOpen(true)}
-          />
+          {role !== "viewer" && (
+            <EditorToolbar
+              editor={editor}
+              title={title}
+              abntMode={abntMode}
+              onAbntChange={setAbntMode}
+              onOpenPageSettings={() => setPageSettingsOpen(true)}
+            />
+          )}
           <div
             className="flex-1 overflow-auto overscroll-contain"
             style={
@@ -309,7 +374,7 @@ function DocumentPage() {
           </div>
         </div>
 
-        <AiSidebar editor={editor} />
+        {role !== "viewer" && <AiSidebar editor={editor} />}
       </div>
 
       <PageSettingsDialog
@@ -318,6 +383,14 @@ function DocumentPage() {
         value={pageSettings}
         onChange={updatePageSettings}
       />
+      {role === "owner" && (
+        <ShareDialog
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          documentId={id}
+          documentTitle={title}
+        />
+      )}
     </div>
   );
 }
