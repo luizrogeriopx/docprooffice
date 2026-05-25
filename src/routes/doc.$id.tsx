@@ -374,7 +374,7 @@ function DocumentPage() {
           </div>
         </div>
 
-        <AiSidebar editor={editor} />
+        {role !== "viewer" && <AiSidebar editor={editor} />}
       </div>
 
       <PageSettingsDialog
@@ -383,6 +383,14 @@ function DocumentPage() {
         value={pageSettings}
         onChange={updatePageSettings}
       />
+      {role === "owner" && (
+        <ShareDialog
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          documentId={id}
+          documentTitle={title}
+        />
+      )}
     </div>
   );
 }
