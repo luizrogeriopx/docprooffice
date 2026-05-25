@@ -13,8 +13,30 @@ export function DocumentsSidebar({ currentId, userId }: { currentId: string; use
   const [open, setOpen] = useState(false);
 
   const load = async () => {
-    const { data } = await supabase.from("documents").select("id,title,updated_at").order("updated_at", { ascending: false }).limit(50);
-    if (data) setDocs(data as Doc[]);
+    const { data: owned } = await supabase
+      .from("documents")
+      .select("id,title,updated_at")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(50);
+    const { data: collabRows } = await supabase
+      .from("document_collaborators")
+      .select("document_id")
+      .eq("user_id", userId);
+    const ids = (collabRows ?? []).map((r) => r.document_id);
+    let collabDocs: Doc[] = [];
+    if (ids.length) {
+      const { data: cd } = await supabase
+        .from("documents")
+        .select("id,title,updated_at")
+        .in("id", ids);
+      collabDocs = (cd ?? []) as Doc[];
+    }
+    const merged = [...((owned as Doc[]) ?? []), ...collabDocs]
+      .filter((d, i, arr) => arr.findIndex((x) => x.id === d.id) === i)
+      .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at))
+      .slice(0, 50);
+    setDocs(merged);
   };
 
   useEffect(() => {
