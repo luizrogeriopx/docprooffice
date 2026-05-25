@@ -31,12 +31,34 @@ function Dashboard() {
   }, [user, loading, navigate]);
 
   const load = async () => {
-    const { data, error } = await supabase
+    if (!user) return;
+    // Documentos próprios
+    const { data: owned, error } = await supabase
       .from("documents")
       .select("id,title,updated_at,content_html")
+      .eq("user_id", user.id)
       .order("updated_at", { ascending: false });
-    if (error) toast.error(error.message);
-    else setDocs(data as Doc[]);
+    if (error) { toast.error(error.message); return; }
+
+    // Documentos em que sou colaborador
+    const { data: collabRows } = await supabase
+      .from("document_collaborators")
+      .select("document_id")
+      .eq("user_id", user.id);
+    const collabIds = (collabRows ?? []).map((r) => r.document_id);
+    let collabDocs: Doc[] = [];
+    if (collabIds.length) {
+      const { data: cd } = await supabase
+        .from("documents")
+        .select("id,title,updated_at,content_html")
+        .in("id", collabIds);
+      collabDocs = (cd ?? []) as Doc[];
+    }
+
+    const merged = [...(owned as Doc[]), ...collabDocs]
+      .filter((d, i, arr) => arr.findIndex((x) => x.id === d.id) === i)
+      .sort((a, b) => +new Date(b.updated_at) - +new Date(a.updated_at));
+    setDocs(merged);
   };
 
 
