@@ -40,6 +40,42 @@ export type Database = {
           },
         ]
       }
+      document_forks: {
+        Row: {
+          created_at: string
+          document_id: string
+          share_link_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          share_link_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          share_link_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_forks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_forks_share_link_id_fkey"
+            columns: ["share_link_id"]
+            isOneToOne: false
+            referencedRelation: "share_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_history: {
         Row: {
           content: Json
