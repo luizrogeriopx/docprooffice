@@ -137,8 +137,27 @@ function Dashboard() {
             {filtered.map((d) => (
               <div key={d.id} className="group relative overflow-hidden rounded-lg border bg-card transition hover:shadow-md">
                 <Link to="/doc/$id" params={{ id: d.id }} className="block">
-                  <div className="grid h-36 place-items-center border-b bg-canvas">
-                    <FileText className="h-10 w-10 text-muted-foreground" />
+                  <div className="relative h-48 overflow-hidden border-b bg-[#f3f4f6]">
+                    {d.content_html ? (
+                      <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-1/2 top-0 origin-top -translate-x-1/2 bg-white shadow-sm"
+                        style={{
+                          width: 794,
+                          minHeight: 1123,
+                          padding: "96px",
+                          transform: "translateX(-50%) scale(0.36)",
+                          fontFamily: "'Times New Roman', Times, serif",
+                          fontSize: "12pt",
+                          color: "#111",
+                        }}
+                        dangerouslySetInnerHTML={{ __html: d.content_html }}
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center">
+                        <FileText className="h-10 w-10 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
                   <div className="p-4">
                     <div className="truncate font-medium">{d.title}</div>
