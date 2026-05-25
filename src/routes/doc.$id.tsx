@@ -117,12 +117,14 @@ function DocumentPage() {
   const [abntMode, setAbntMode] = useState<string>(""); // "", "abnt", "abnt abnt-arial", "abnt abnt-references", "abnt abnt-cover"
   const [pageSettings, setPageSettings] = useState<PageSettings>(DEFAULT_PAGE_SETTINGS);
   const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [role, setRole] = useState<"owner" | "collab" | "viewer">("viewer");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const historyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const applyingRemoteRef = useRef(false);
+  const lastSavedHtmlRef = useRef<string>("");
 
-  useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
-  }, [user, loading, navigate]);
+  // Note: login no longer forced — view links work for anonymous users.
 
   // Load page settings (footer / page numbers / watermark)
   useEffect(() => {
