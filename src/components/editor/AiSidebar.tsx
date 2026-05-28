@@ -5,21 +5,37 @@ import { runAiAction, runAiChat } from "@/lib/ai.functions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Sparkles, Wand2, FileText, PenLine, SpellCheck2, Loader2, Check, X,
-  Send, Plus, MessageSquare,
+  Sparkles,
+  Wand2,
+  FileText,
+  PenLine,
+  SpellCheck2,
+  Loader2,
+  Check,
+  X,
+  Send,
+  Plus,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-interface Props { editor: Editor | null; }
+interface Props {
+  editor: Editor | null;
+}
 
 type Action = "improve" | "summarize" | "continue" | "spelling";
 
-const ACTIONS: { key: Action; label: string; icon: React.ComponentType<any>; needsSelection: boolean }[] = [
-  { key: "improve",   label: "Melhorar",   icon: Wand2,       needsSelection: true  },
-  { key: "summarize", label: "Resumir",    icon: FileText,    needsSelection: true  },
-  { key: "continue",  label: "Continuar",  icon: PenLine,     needsSelection: false },
-  { key: "spelling",  label: "Corrigir",   icon: SpellCheck2, needsSelection: true  },
+const ACTIONS: {
+  key: Action;
+  label: string;
+  icon: React.ComponentType<any>;
+  needsSelection: boolean;
+}[] = [
+  { key: "improve", label: "Melhorar", icon: Wand2, needsSelection: true },
+  { key: "summarize", label: "Resumir", icon: FileText, needsSelection: true },
+  { key: "continue", label: "Continuar", icon: PenLine, needsSelection: false },
+  { key: "spelling", label: "Corrigir", icon: SpellCheck2, needsSelection: true },
 ];
 
 type ChatMsg = {
@@ -35,10 +51,20 @@ export function AiSidebar({ editor }: Props) {
   const callAi = useServerFn(runAiAction);
   const chatFn = useServerFn(runAiChat);
   const [busyAction, setBusyAction] = useState<Action | null>(null);
-  const [preview, setPreview] = useState<{ action: Action; result: string; from: number; to: number; append: boolean } | null>(null);
+  const [preview, setPreview] = useState<{
+    action: Action;
+    result: string;
+    from: number;
+    to: number;
+    append: boolean;
+  } | null>(null);
 
   const [messages, setMessages] = useState<ChatMsg[]>([
-    { role: "assistant", content: "Olá! Eu sou o Assistente. Posso escrever, reescrever, traduzir, resumir ou responder dúvidas sobre o documento. Selecione um trecho ou peça algo novo." },
+    {
+      role: "assistant",
+      content:
+        "Olá! Eu sou o Assistente. Posso escrever, reescrever, traduzir, resumir ou responder dúvidas sobre o documento. Selecione um trecho ou peça algo novo.",
+    },
   ]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -59,12 +85,19 @@ export function AiSidebar({ editor }: Props) {
     if (append) {
       text = editor.getText().slice(-4000);
       const end = editor.state.doc.content.size;
-      from = end; to = end;
+      from = end;
+      to = end;
     } else {
-      if (needsSelection && from === to) { toast.message("Selecione um trecho primeiro"); return; }
+      if (needsSelection && from === to) {
+        toast.message("Selecione um trecho primeiro");
+        return;
+      }
       text = editor.state.doc.textBetween(from, to, "\n");
     }
-    if (!text.trim()) { toast.message("Sem texto para processar"); return; }
+    if (!text.trim()) {
+      toast.message("Sem texto para processar");
+      return;
+    }
     setBusyAction(action);
     try {
       const { text: result } = await callAi({ data: { action, text } });
@@ -118,7 +151,10 @@ export function AiSidebar({ editor }: Props) {
       };
       setMessages((m) => [...m, assistantMsg]);
     } catch (e: any) {
-      setMessages((m) => [...m, { role: "assistant", content: `Erro: ${e.message ?? "falha ao processar"}` }]);
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", content: `Erro: ${e.message ?? "falha ao processar"}` },
+      ]);
     } finally {
       setSending(false);
     }
@@ -144,12 +180,20 @@ export function AiSidebar({ editor }: Props) {
   };
 
   const newChat = () => {
-    setMessages([{ role: "assistant", content: "Nova conversa iniciada. Como posso ajudar com este documento?" }]);
+    setMessages([
+      {
+        role: "assistant",
+        content: "Nova conversa iniciada. Como posso ajudar com este documento?",
+      },
+    ]);
     setInput("");
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
   };
 
   return (
@@ -157,7 +201,13 @@ export function AiSidebar({ editor }: Props) {
       <div className="flex items-center gap-2 border-b px-4 py-3">
         <Sparkles className="h-4 w-4 text-primary" />
         <div className="text-sm font-semibold">Assistente</div>
-        <Button size="sm" variant="ghost" className="ml-auto h-7 w-7 p-0" onClick={newChat} title="Nova conversa">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-auto h-7 w-7 p-0"
+          onClick={newChat}
+          title="Nova conversa"
+        >
           <Plus className="h-4 w-4" />
         </Button>
       </div>
@@ -171,7 +221,11 @@ export function AiSidebar({ editor }: Props) {
             disabled={busyAction !== null}
             className="flex items-center gap-2 rounded-md border bg-card px-2 py-1.5 text-xs font-medium transition hover:bg-accent disabled:opacity-50"
           >
-            {busyAction === a.key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <a.icon className="h-3.5 w-3.5 text-primary" />}
+            {busyAction === a.key ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <a.icon className="h-3.5 w-3.5 text-primary" />
+            )}
             {a.label}
           </button>
         ))}
@@ -182,8 +236,17 @@ export function AiSidebar({ editor }: Props) {
           <div className="mb-2 flex items-center justify-between">
             <div className="text-xs font-semibold uppercase text-muted-foreground">Sugestão</div>
             <div className="flex gap-1">
-              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setPreview(null)}><X className="h-4 w-4" /></Button>
-              <Button size="sm" className="h-7 w-7 p-0" onClick={applyPreview}><Check className="h-4 w-4" /></Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0"
+                onClick={() => setPreview(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <Button size="sm" className="h-7 w-7 p-0" onClick={applyPreview}>
+                <Check className="h-4 w-4" />
+              </Button>
             </div>
           </div>
           <div className="max-h-40 overflow-auto whitespace-pre-wrap text-sm">{preview.result}</div>
@@ -194,11 +257,16 @@ export function AiSidebar({ editor }: Props) {
       <div ref={listRef} className="flex-1 overflow-auto p-3">
         <div className="space-y-3">
           {messages.map((m, i) => (
-            <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
-              <div className={cn(
-                "max-w-[90%] rounded-lg px-3 py-2 text-sm",
-                m.role === "user" ? "bg-primary text-primary-foreground" : "border bg-card"
-              )}>
+            <div
+              key={i}
+              className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}
+            >
+              <div
+                className={cn(
+                  "max-w-[90%] rounded-lg px-3 py-2 text-sm",
+                  m.role === "user" ? "bg-primary text-primary-foreground" : "border bg-card",
+                )}
+              >
                 <div className="whitespace-pre-wrap break-words">{m.content}</div>
                 {m.role === "assistant" && m.html && m.action !== "none" && (
                   <div className="mt-2 space-y-2">
@@ -207,10 +275,18 @@ export function AiSidebar({ editor }: Props) {
                       dangerouslySetInnerHTML={{ __html: m.html }}
                     />
                     {m.applied ? (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground"><Check className="h-3 w-3" /> Inserido</div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Check className="h-3 w-3" /> Inserido
+                      </div>
                     ) : (
-                      <Button size="sm" className="h-7 w-full text-xs" onClick={() => applyChatInsertion(i)}>
-                        {m.action === "replace_selection" ? "Substituir seleção" : "Inserir no documento"}
+                      <Button
+                        size="sm"
+                        className="h-7 w-full text-xs"
+                        onClick={() => applyChatInsertion(i)}
+                      >
+                        {m.action === "replace_selection"
+                          ? "Substituir seleção"
+                          : "Inserir no documento"}
                       </Button>
                     )}
                   </div>
@@ -239,7 +315,12 @@ export function AiSidebar({ editor }: Props) {
             rows={2}
             className="min-h-[44px] resize-none text-sm"
           />
-          <Button size="sm" className="h-10 w-10 shrink-0 p-0" onClick={sendMessage} disabled={sending || !input.trim()}>
+          <Button
+            size="sm"
+            className="h-10 w-10 shrink-0 p-0"
+            onClick={sendMessage}
+            disabled={sending || !input.trim()}
+          >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </div>

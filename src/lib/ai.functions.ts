@@ -8,10 +8,14 @@ const ActionSchema = z.object({
 });
 
 const PROMPTS: Record<string, string> = {
-  improve: "Você é um editor profissional. Reescreva o texto a seguir melhorando clareza, fluidez e impacto, mantendo o idioma original. Responda APENAS com o texto reescrito, sem explicações.",
-  summarize: "Resuma o texto a seguir em poucos parágrafos claros, no idioma original. Responda APENAS com o resumo, sem explicações.",
-  continue: "Continue escrevendo o texto a seguir naturalmente, mantendo o tom, estilo e idioma. Responda APENAS com a continuação (sem repetir o texto original).",
-  spelling: "Corrija ortografia, gramática e pontuação do texto a seguir, preservando o significado e o idioma. Responda APENAS com o texto corrigido.",
+  improve:
+    "Você é um editor profissional. Reescreva o texto a seguir melhorando clareza, fluidez e impacto, mantendo o idioma original. Responda APENAS com o texto reescrito, sem explicações.",
+  summarize:
+    "Resuma o texto a seguir em poucos parágrafos claros, no idioma original. Responda APENAS com o resumo, sem explicações.",
+  continue:
+    "Continue escrevendo o texto a seguir naturalmente, mantendo o tom, estilo e idioma. Responda APENAS com a continuação (sem repetir o texto original).",
+  spelling:
+    "Corrija ortografia, gramática e pontuação do texto a seguir, preservando o significado e o idioma. Responda APENAS com o texto corrigido.",
 };
 
 async function callGateway(body: unknown) {
@@ -23,8 +27,10 @@ async function callGateway(body: unknown) {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    if (res.status === 429) throw new Error("Limite de uso atingido. Tente novamente em instantes.");
-    if (res.status === 402) throw new Error("Créditos de IA esgotados. Adicione créditos no workspace Lovable.");
+    if (res.status === 429)
+      throw new Error("Limite de uso atingido. Tente novamente em instantes.");
+    if (res.status === 402)
+      throw new Error("Créditos de IA esgotados. Adicione créditos no workspace Lovable.");
     throw new Error(`Erro da IA: ${res.status}`);
   }
   return res.json();
@@ -46,10 +52,15 @@ export const runAiAction = createServerFn({ method: "POST" })
   });
 
 const ChatSchema = z.object({
-  messages: z.array(z.object({
-    role: z.enum(["user", "assistant"]),
-    content: z.string().max(8000),
-  })).min(1).max(40),
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(8000),
+      }),
+    )
+    .min(1)
+    .max(40),
   docText: z.string().max(20000).optional().default(""),
   selectionText: z.string().max(10000).optional().default(""),
 });
@@ -82,7 +93,9 @@ export const runAiChat = createServerFn({ method: "POST" })
       contextParts.push(`Trecho atualmente selecionado pelo usuário:\n"""${data.selectionText}"""`);
     }
     if (data.docText.trim()) {
-      contextParts.push(`Conteúdo atual do documento (pode estar truncado):\n"""${data.docText.slice(0, 12000)}"""`);
+      contextParts.push(
+        `Conteúdo atual do documento (pode estar truncado):\n"""${data.docText.slice(0, 12000)}"""`,
+      );
     }
     const systemMsg = contextParts.length
       ? `${CHAT_SYSTEM}\n\n${contextParts.join("\n\n")}`
@@ -91,10 +104,7 @@ export const runAiChat = createServerFn({ method: "POST" })
     const json = await callGateway({
       model: "google/gemini-3-flash-preview",
       response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemMsg },
-        ...data.messages,
-      ],
+      messages: [{ role: "system", content: systemMsg }, ...data.messages],
     });
 
     const raw: string = json.choices?.[0]?.message?.content ?? "{}";
@@ -106,7 +116,9 @@ export const runAiChat = createServerFn({ method: "POST" })
     }
     return {
       reply: typeof parsed.reply === "string" ? parsed.reply : "",
-      action: (["append", "replace_selection", "none"] as const).includes(parsed.action) ? parsed.action : "none",
+      action: (["append", "replace_selection", "none"] as const).includes(parsed.action)
+        ? parsed.action
+        : "none",
       html: typeof parsed.html === "string" ? parsed.html : "",
     };
   });

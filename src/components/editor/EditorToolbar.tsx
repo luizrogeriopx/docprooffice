@@ -50,7 +50,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
-import { exportToPdf, exportToDocx } from "@/lib/export";
+import { exportToPdf, exportToDocx, exportToPptx } from "@/lib/export";
 
 interface Props {
   editor: Editor | null;
@@ -585,6 +585,9 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange, onOp
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => exportToDocx(editor, title)}>
               <FileText className="mr-2 h-4 w-4" /> Word (.docx)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportToPptx(editor, title)}>
+              <FileText className="mr-2 h-4 w-4" /> PowerPoint (.pptx)
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -19,6 +19,7 @@ import { FontSize } from "@/components/editor/FontSize";
 import { FontFamily } from "@tiptap/extension-font-family";
 import { Color } from "@tiptap/extension-color";
 import { Highlight } from "@tiptap/extension-highlight";
+import Document from "@tiptap/extension-document";
 import { PageBreak } from "@/components/editor/PageBreak";
 import {
   PaginationBreaks,
@@ -107,6 +108,16 @@ function formatPastedHtmlAbnt(html: string): string {
   }
 }
 
+const CustomDocument = Document.extend({
+  addAttributes() {
+    return {
+      layout: {
+        default: "document",
+      },
+    };
+  },
+});
+
 function DocumentPage() {
   const { id } = Route.useParams();
   const { user, loading } = useAuth();
@@ -140,7 +151,11 @@ function DocumentPage() {
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] } }),
+      CustomDocument,
+      StarterKit.configure({
+        document: false,
+        heading: { levels: [1, 2, 3, 4, 5, 6] },
+      }),
       Underline,
       LinkExt.configure({
         openOnClick: false,
@@ -451,6 +466,76 @@ function getBlockDocumentPosition(view: EditorView, block: HTMLElement): number 
   return found;
 }
 
+function findLineStartPos(
+  view: EditorView,
+  block: HTMLElement,
+  lineTop: number,
+  blockStartPos: number,
+): number {
+  const text = block.textContent || "";
+  if (!text) return blockStartPos;
+
+  const textNodes: Text[] = [];
+  const walk = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+  let node: Node | null;
+  while ((node = walk.nextNode())) {
+    textNodes.push(node as Text);
+  }
+  if (textNodes.length === 0) return blockStartPos;
+
+  let low = 0;
+  let high = text.length - 1;
+  let bestPos = blockStartPos;
+  let minDiff = Infinity;
+
+  const range = document.createRange();
+
+  const getDOMPos = (index: number): { node: Text; offset: number } | null => {
+    let acc = 0;
+    for (const tNode of textNodes) {
+      if (index >= acc && index <= acc + tNode.length) {
+        return { node: tNode, offset: index - acc };
+      }
+      acc += tNode.length;
+    }
+    return null;
+  };
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const domPos = getDOMPos(mid);
+    if (!domPos) break;
+
+    range.setStart(domPos.node, domPos.offset);
+    range.setEnd(domPos.node, Math.min(domPos.node.length, domPos.offset + 1));
+    const rects = range.getClientRects();
+
+    if (rects.length > 0) {
+      const rectTop = rects[0].top;
+      const diff = Math.abs(rectTop - lineTop);
+
+      if (diff < minDiff) {
+        minDiff = diff;
+        try {
+          bestPos = view.posAtDOM(domPos.node, domPos.offset);
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      if (rectTop < lineTop) {
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  return bestPos;
+}
+
 function DocPage({
   abntMode,
   editor,
@@ -466,6 +551,10 @@ function DocPage({
   const [scale, setScale] = useState(1);
   const [pageCount, setPageCount] = useState(1);
   const pageCountRef = useRef(1);
+
+  const layoutMode = editor?.state.doc.attrs.layout || "document";
+  const isPresentation = layoutMode === "presentation";
+  const pageHeight = isPresentation ? 251 : A4_HEIGHT;
 
   useEffect(() => {
     pageCountRef.current = pageCount;
@@ -490,6 +579,7 @@ function DocPage({
     if (!contentEl || !editor) return;
 
     let frame: number | null = null;
+    let observer: ResizeObserver | null = null;
     let previousSignature = "";
     let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
     let isPaginating = false;
@@ -500,6 +590,11 @@ function DocPage({
       try {
         const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
         if (!prose) return;
+
+        // Disconnect observer temporarily to prevent resize loop during class toggling
+        if (observer) {
+          observer.disconnect();
+        }
 
         const styles = window.getComputedStyle(contentEl);
         const paddingTop = parseFloat(styles.paddingTop) || 0;
@@ -519,51 +614,137 @@ function DocPage({
         breaks.forEach((pageBreak) => {
           const y = pageBreak.offsetTop;
           const absoluteY = paddingTop + y;
-          const pageIndex = Math.floor(Math.max(0, absoluteY - 1) / (A4_HEIGHT + A4_PAGE_GAP));
-          const nextPageContentTop = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
+          const pageIndex = Math.floor(Math.max(0, absoluteY - 1) / (pageHeight + A4_PAGE_GAP));
+          const nextPageContentTop = (pageIndex + 1) * (pageHeight + A4_PAGE_GAP) + paddingTop;
           const height = Math.max(40, nextPageContentTop - absoluteY);
           pageBreak.style.setProperty("--docpro-page-break-height", `${height}px`);
         });
 
         const autoBreaks: PaginationBreakSpec[] = [];
-        const flowBlocks = Array.from(prose.children).filter(
-          (child): child is HTMLElement =>
-            child instanceof HTMLElement &&
-            !child.classList.contains("docpro-auto-page-break") &&
-            !child.classList.contains("docpro-page-break"),
+        const visualLines: Array<{
+          left: number;
+          top: number;
+          docTop: number;
+          docBottom: number;
+          block: HTMLElement;
+          blockStartPos: number;
+        }> = [];
+
+        // Extract all text blocks that are part of the main flow
+        const textBlocks = Array.from(
+          prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre"),
+        ).filter(
+          (block) =>
+            !block.closest(".docpro-page-break") &&
+            !(block.tagName === "LI" && block.querySelector("p, h1, h2, h3, h4, h5, h6, pre")),
         );
-        let measuredBottom = paddingTop + paddingBottom;
 
         prose.classList.add("docpro-measuring-pagination");
         try {
-          let accumulatedShift = 0;
-          flowBlocks.forEach((block) => {
-            const blockRect = block.getBoundingClientRect();
-            const blockTop =
-              (blockRect.top - proseRect.top) / visualScale + paddingTop + accumulatedShift;
-            const blockBottom =
-              (blockRect.bottom - proseRect.top) / visualScale + paddingTop + accumulatedShift;
-            const pageIndex = Math.floor(Math.max(0, blockTop) / (A4_HEIGHT + A4_PAGE_GAP));
-            const pageTop = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-            const pageBottom = pageIndex * (A4_HEIGHT + A4_PAGE_GAP) + A4_HEIGHT - paddingBottom;
-
-            if (blockBottom > pageBottom && blockTop > pageTop + 1) {
-              const pos = getBlockDocumentPosition(editor.view, block);
-              const nextPageTop = (pageIndex + 1) * (A4_HEIGHT + A4_PAGE_GAP) + paddingTop;
-              const height = Math.max(0, nextPageTop - blockTop);
-              if (pos !== null && height > 0) {
-                autoBreaks.push({ pos, height });
-                accumulatedShift += height;
-                measuredBottom = Math.max(measuredBottom, blockBottom + height + paddingBottom);
-                return;
-              }
+          textBlocks.forEach((block) => {
+            let blockStartPos = 0;
+            try {
+              blockStartPos = editor.view.posAtDOM(block, 0);
+            } catch (e) {
+              return;
             }
 
-            measuredBottom = Math.max(measuredBottom, blockBottom + paddingBottom);
+            const range = document.createRange();
+            range.selectNodeContents(block);
+            const lineRects = Array.from(range.getClientRects()).filter(
+              (rect) => rect.width > 0 && rect.height > 0,
+            );
+            range.detach();
+
+            if (lineRects.length === 0) return;
+
+            // Group client rects by line (roughly same top coordinate)
+            const grouped = new Map<number, DOMRect[]>();
+            lineRects.forEach((rect) => {
+              const key = Math.round(rect.top * 2) / 2;
+              grouped.set(key, [...(grouped.get(key) ?? []), rect]);
+            });
+
+            grouped.forEach((rects) => {
+              const left = Math.min(...rects.map((rect) => rect.left));
+              const top = Math.min(...rects.map((rect) => rect.top));
+              const bottom = Math.max(...rects.map((rect) => rect.bottom));
+              visualLines.push({
+                left,
+                top,
+                block,
+                blockStartPos,
+                docTop: (top - proseRect.top) / visualScale + paddingTop,
+                docBottom: (bottom - proseRect.top) / visualScale + paddingTop,
+              });
+            });
           });
         } finally {
           prose.classList.remove("docpro-measuring-pagination");
+          // Reconnect observer
+          if (observer && prose) {
+            observer.observe(prose);
+          }
         }
+
+        // Calculate auto breaks line-by-line
+        let accumulatedShift = 0;
+        let measuredBottom = paddingTop + paddingBottom;
+
+        visualLines
+          .sort((a, b) => a.docTop - b.docTop || a.docBottom - b.docBottom)
+          .forEach((currentLine) => {
+            const lineTop = currentLine.docTop + accumulatedShift;
+            const lineBottom = currentLine.docBottom + accumulatedShift;
+            const pageIndex = Math.floor(Math.max(0, lineTop) / (pageHeight + A4_PAGE_GAP));
+            const pageTop = pageIndex * (pageHeight + A4_PAGE_GAP) + paddingTop;
+            const pageBottom = pageIndex * (pageHeight + A4_PAGE_GAP) + pageHeight - paddingBottom;
+
+            if (pageIndex > 0 && lineTop < pageTop) {
+              const pos = findLineStartPos(
+                editor.view,
+                currentLine.block,
+                currentLine.top,
+                currentLine.blockStartPos,
+              );
+              const height = Math.max(0, pageTop - lineTop);
+              if (height > 0) {
+                const existingBreak = autoBreaks.find((b) => b.pos === pos);
+                if (existingBreak) {
+                  if (height > existingBreak.height) {
+                    accumulatedShift += height - existingBreak.height;
+                    existingBreak.height = height;
+                  }
+                } else {
+                  autoBreaks.push({ pos, height });
+                  accumulatedShift += height;
+                }
+              }
+            } else if (lineBottom > pageBottom) {
+              const pos = findLineStartPos(
+                editor.view,
+                currentLine.block,
+                currentLine.top,
+                currentLine.blockStartPos,
+              );
+              const nextPageY = (pageIndex + 1) * (pageHeight + A4_PAGE_GAP) + paddingTop;
+              const height = Math.max(0, nextPageY - lineTop);
+              if (height > 0) {
+                const existingBreak = autoBreaks.find((b) => b.pos === pos);
+                if (existingBreak) {
+                  if (height > existingBreak.height) {
+                    accumulatedShift += height - existingBreak.height;
+                    existingBreak.height = height;
+                  }
+                } else {
+                  autoBreaks.push({ pos, height });
+                  accumulatedShift += height;
+                }
+              }
+            }
+
+            measuredBottom = Math.max(measuredBottom, lineBottom + paddingBottom);
+          });
 
         autoBreaks.sort((a, b) => a.pos - b.pos || b.height - a.height);
 
@@ -576,7 +757,7 @@ function DocPage({
         const measuredHeight = measuredBottom;
         const pages = Math.max(
           1,
-          Math.floor(Math.max(0, measuredHeight - 1) / (A4_HEIGHT + A4_PAGE_GAP)) + 1,
+          Math.floor(Math.max(0, measuredHeight - 1) / (pageHeight + A4_PAGE_GAP)) + 1,
         );
         if (pageCountRef.current !== pages) {
           pageCountRef.current = pages;
@@ -591,14 +772,14 @@ function DocPage({
       if (isPaginating) return;
       const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
       const measuredHeight = prose?.scrollHeight ?? 0;
-      const docSignature = `${editor.state.doc.content.size}:${editor.state.doc.childCount}:${abntMode}:${scale}:${measuredHeight}`;
+      const docSignature = `${editor.state.doc.content.size}:${editor.state.doc.childCount}:${abntMode}:${scale}:${measuredHeight}:${layoutMode}`;
       if (!force && docSignature === lastDocSignature) return;
       lastDocSignature = docSignature;
       if (frame !== null) cancelAnimationFrame(frame);
       if (debounceTimeout !== null) clearTimeout(debounceTimeout);
       debounceTimeout = setTimeout(() => {
         frame = requestAnimationFrame(layout);
-      }, 180);
+      }, 100);
     };
 
     const scheduleEvt = () => schedule();
@@ -630,17 +811,17 @@ function DocPage({
       resizeObserver.disconnect();
       contentEl.removeEventListener("load", onImgLoad, true);
     };
-  }, [editor, abntMode, scale]);
+  }, [editor, abntMode, scale, layoutMode, pageHeight]);
 
-  const pageStride = A4_HEIGHT + A4_PAGE_GAP;
-  const contentHeight = pageCount * A4_HEIGHT + Math.max(0, pageCount - 1) * A4_PAGE_GAP;
+  const pageStride = pageHeight + A4_PAGE_GAP;
+  const contentHeight = pageCount * pageHeight + Math.max(0, pageCount - 1) * A4_PAGE_GAP;
 
   return (
     <div className="px-4 py-8 sm:px-6" ref={wrapRef}>
       <div style={{ width: A4_WIDTH * scale, height: contentHeight * scale, marginInline: "auto" }}>
         <div
           ref={pageRef}
-          className={`docpro-editor relative ${abntMode}`}
+          className={`docpro-editor relative ${isPresentation ? "presentation" : abntMode}`}
           style={{
             width: A4_WIDTH,
             height: contentHeight,
@@ -653,13 +834,13 @@ function DocPage({
               key={index}
               aria-hidden="true"
               className="pointer-events-none absolute left-0 w-full rounded-sm bg-page shadow-md ring-1 ring-border"
-              style={{ top: index * pageStride, height: A4_HEIGHT }}
+              style={{ top: index * pageStride, height: pageHeight }}
             />
           ))}
           <div
             ref={contentRef}
             className={`docpro-page-content relative z-10 px-[96px] py-[96px] ${
-              abntMode ? "abnt-page" : ""
+              isPresentation ? "presentation-page" : abntMode ? "abnt-page" : ""
             }`}
             style={{ minHeight: contentHeight, width: A4_WIDTH }}
           >

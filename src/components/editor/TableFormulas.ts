@@ -52,7 +52,7 @@ function buildDecorations(state: any): DecorationSet {
         Decoration.node(info.pos, info.pos + info.size, {
           class: isErr ? "has-formula has-formula-error" : "has-formula",
           "data-result": display,
-        })
+        }),
       );
     }
     return false;

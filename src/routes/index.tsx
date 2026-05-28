@@ -9,7 +9,11 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "DocPro — Editor de documentos com IA" },
-      { name: "description", content: "Crie, edite e exporte documentos profissionais com IA integrada. Auto save, PDF, DOCX e muito mais." },
+      {
+        name: "description",
+        content:
+          "Crie, edite e exporte documentos profissionais com IA integrada. Auto save, PDF, DOCX e muito mais.",
+      },
     ],
   }),
 });
@@ -33,8 +37,14 @@ function Landing() {
             DocPro
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/login"><Button variant="ghost" size="sm">Entrar</Button></Link>
-            <Link to="/login"><Button size="sm">Começar grátis</Button></Link>
+            <Link to="/login">
+              <Button variant="ghost" size="sm">
+                Entrar
+              </Button>
+            </Link>
+            <Link to="/login">
+              <Button size="sm">Começar grátis</Button>
+            </Link>
           </div>
         </div>
       </header>
@@ -44,25 +54,50 @@ function Landing() {
           <Sparkles className="h-3 w-3" /> Com inteligência artificial integrada
         </div>
         <h1 className="text-balance text-5xl font-bold tracking-tight md:text-6xl">
-          O editor de documentos<br />que pensa com você.
+          O editor de documentos
+          <br />
+          que pensa com você.
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-muted-foreground">
-          DocPro é um editor moderno inspirado no Word e no Google Docs, com IA, auto save em tempo real e exportação para PDF e DOCX.
+          DocPro é um editor moderno inspirado no Word e no Google Docs, com IA, auto save em tempo
+          real e exportação para PDF e DOCX.
         </p>
         <div className="mt-8 flex justify-center gap-3">
-          <Link to="/login"><Button size="lg">Criar conta gratuita</Button></Link>
-          <Link to="/login"><Button size="lg" variant="outline">Já tenho conta</Button></Link>
+          <Link to="/login">
+            <Button size="lg">Criar conta gratuita</Button>
+          </Link>
+          <Link to="/login">
+            <Button size="lg" variant="outline">
+              Já tenho conta
+            </Button>
+          </Link>
         </div>
       </section>
 
       <section className="mx-auto grid max-w-5xl gap-4 px-6 pb-24 md:grid-cols-3">
         {[
-          { i: Sparkles, t: "IA integrada", d: "Melhore, resuma, corrija e continue textos com um clique." },
-          { i: Save, t: "Auto save", d: "Suas alterações são salvas automaticamente em tempo real." },
+          {
+            i: Sparkles,
+            t: "IA integrada",
+            d: "Melhore, resuma, corrija e continue textos com um clique.",
+          },
+          {
+            i: Save,
+            t: "Auto save",
+            d: "Suas alterações são salvas automaticamente em tempo real.",
+          },
           { i: Download, t: "Exportação", d: "Baixe seus documentos como PDF ou DOCX." },
-          { i: FileText, t: "Editor rich text", d: "Negrito, itálico, listas, tabelas, imagens e muito mais." },
+          {
+            i: FileText,
+            t: "Editor rich text",
+            d: "Negrito, itálico, listas, tabelas, imagens e muito mais.",
+          },
           { i: ShieldCheck, t: "Privado e seguro", d: "Cada documento pertence apenas a você." },
-          { i: Zap, t: "Atalhos do teclado", d: "Fluxo profissional inspirado no Word e Google Docs." },
+          {
+            i: Zap,
+            t: "Atalhos do teclado",
+            d: "Fluxo profissional inspirado no Word e Google Docs.",
+          },
         ].map(({ i: Icon, t, d }) => (
           <div key={t} className="rounded-lg border bg-card p-5">
             <Icon className="h-5 w-5 text-primary" />

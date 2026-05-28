@@ -499,3 +499,45 @@
 .docpro-card-preview table { border-collapse: collapse; }
 .docpro-card-preview table td, .docpro-card-preview table th { border: 1px solid #d1d5db; padding: 4px 8px; }
 .docpro-card-preview a { color: inherit; text-decoration: underline; }
+
+/* ============ Formato de Apresentação (Slides 19:6) ============ */
+.docpro-editor.presentation .ProseMirror {
+  font-size: 16pt;
+  line-height: 1.4;
+  color: oklch(0.2 0.01 260);
+  background-color: transparent;
+}
+
+.docpro-editor.presentation .ProseMirror h1 {
+  font-size: 2.5em;
+  color: var(--primary);
+  margin-top: 0.2em;
+  margin-bottom: 0.3em;
+}
+
+.docpro-editor.presentation .ProseMirror h2 {
+  font-size: 2em;
+  color: var(--primary);
+  margin-top: 0.2em;
+  margin-bottom: 0.3em;
+}
+
+.docpro-editor.presentation .ProseMirror h3 {
+  font-size: 1.6em;
+  margin-top: 0.2em;
+  margin-bottom: 0.3em;
+}
+
+.docpro-page-content.presentation-page {
+  padding: 32px 48px !important;
+}
+
+/* Reduzir margens das quebras de página automáticas na apresentação */
+.docpro-editor.presentation .ProseMirror .docpro-auto-page-break {
+  margin: 0 -48px;
+}
+
+.docpro-editor.presentation .ProseMirror .docpro-page-break {
+  margin: 16px -48px;
+  height: var(--docpro-page-break-height, 40px);
+}

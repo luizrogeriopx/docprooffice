@@ -39,7 +39,10 @@ function LoginPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin + "/dashboard", data: { full_name: name } },
+          options: {
+            emailRedirectTo: window.location.origin + "/dashboard",
+            data: { full_name: name },
+          },
         });
         if (error) throw error;
         toast.success("Conta criada! Verifique seu e-mail para confirmar.");
@@ -78,11 +81,24 @@ function LoginPage() {
           )}
           <div>
             <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
           <div>
             <Label htmlFor="password">Senha</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
           </div>
           <Button type="submit" disabled={busy} className="w-full">
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { NewDocumentDialog } from "@/components/dashboard/NewDocumentDialog";
 
-interface Doc { id: string; title: string; updated_at: string; }
+interface Doc {
+  id: string;
+  title: string;
+  updated_at: string;
+}
 
 export function DocumentsSidebar({ currentId, userId }: { currentId: string; userId: string }) {
   const [docs, setDocs] = useState<Doc[]>([]);
@@ -45,17 +49,29 @@ export function DocumentsSidebar({ currentId, userId }: { currentId: string; use
       .channel("docs-list")
       .on("postgres_changes", { event: "*", schema: "public", table: "documents" }, () => load())
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [currentId]);
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
       <div className="flex items-center gap-2 border-b px-3 py-2">
-        <Link to="/dashboard" className="grid h-8 w-8 place-items-center rounded-md hover:bg-accent" title="Voltar">
+        <Link
+          to="/dashboard"
+          className="grid h-8 w-8 place-items-center rounded-md hover:bg-accent"
+          title="Voltar"
+        >
           <ChevronLeft className="h-4 w-4" />
         </Link>
         <span className="text-sm font-semibold">Documentos</span>
-        <Button size="sm" variant="ghost" className="ml-auto h-8 w-8 p-0" onClick={() => setOpen(true)} title="Novo">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="ml-auto h-8 w-8 p-0"
+          onClick={() => setOpen(true)}
+          title="Novo"
+        >
           <Plus className="h-4 w-4" />
         </Button>
       </div>
@@ -67,7 +83,7 @@ export function DocumentsSidebar({ currentId, userId }: { currentId: string; use
             params={{ id: d.id }}
             className={cn(
               "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition hover:bg-accent",
-              d.id === currentId && "bg-accent font-medium text-accent-foreground"
+              d.id === currentId && "bg-accent font-medium text-accent-foreground",
             )}
           >
             <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />

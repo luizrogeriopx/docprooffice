@@ -2,8 +2,14 @@ import { mergeAttributes, Node, nodeInputRule } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
 import {
-  AlignLeft, AlignCenter, AlignRight, Image as ImageIcon,
-  Layers, SquareStack, Trash2, MoveDiagonal,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Image as ImageIcon,
+  Layers,
+  SquareStack,
+  Trash2,
+  MoveDiagonal,
 } from "lucide-react";
 
 export type ImageAlign = "inline" | "left" | "right" | "center" | "behind" | "front";
@@ -11,7 +17,14 @@ export type ImageAlign = "inline" | "left" | "right" | "center" | "behind" | "fr
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     resizableImage: {
-      setImage: (options: { src: string; alt?: string; width?: number; align?: ImageAlign; x?: number; y?: number }) => ReturnType;
+      setImage: (options: {
+        src: string;
+        alt?: string;
+        width?: number;
+        align?: ImageAlign;
+        x?: number;
+        y?: number;
+      }) => ReturnType;
     };
   }
 }
@@ -28,8 +41,14 @@ export const ResizableImage = Node.create({
     return {
       src: { default: null },
       alt: { default: null },
-      width: { default: 480, parseHTML: (el) => parseInt(el.getAttribute("width") || "480", 10) || 480 },
-      align: { default: "inline" as ImageAlign, parseHTML: (el) => (el.getAttribute("data-align") as ImageAlign) || "inline" },
+      width: {
+        default: 480,
+        parseHTML: (el) => parseInt(el.getAttribute("width") || "480", 10) || 480,
+      },
+      align: {
+        default: "inline" as ImageAlign,
+        parseHTML: (el) => (el.getAttribute("data-align") as ImageAlign) || "inline",
+      },
       x: { default: 0, parseHTML: (el) => parseInt(el.getAttribute("data-x") || "0", 10) || 0 },
       y: { default: 0, parseHTML: (el) => parseInt(el.getAttribute("data-y") || "0", 10) || 0 },
     };
@@ -41,19 +60,24 @@ export const ResizableImage = Node.create({
 
   renderHTML({ HTMLAttributes }) {
     const { width, align, x, y, ...rest } = HTMLAttributes as any;
-    return ["img", mergeAttributes(rest, {
-      width: String(width ?? 480),
-      "data-align": align ?? "inline",
-      "data-x": String(x ?? 0),
-      "data-y": String(y ?? 0),
-      style: `max-width:100%;`,
-    })];
+    return [
+      "img",
+      mergeAttributes(rest, {
+        width: String(width ?? 480),
+        "data-align": align ?? "inline",
+        "data-x": String(x ?? 0),
+        "data-y": String(y ?? 0),
+        style: `max-width:100%;`,
+      }),
+    ];
   },
 
   addCommands() {
     return {
-      setImage: (options) => ({ commands }) =>
-        commands.insertContent({ type: this.name, attrs: options }),
+      setImage:
+        (options) =>
+        ({ commands }) =>
+          commands.insertContent({ type: this.name, attrs: options }),
     };
   },
 
@@ -74,7 +98,12 @@ export const ResizableImage = Node.create({
 
 function ResizableImageView({ node, updateAttributes, selected, deleteNode }: NodeViewProps) {
   const { src, alt, width, align, x, y } = node.attrs as {
-    src: string; alt?: string; width: number; align: ImageAlign; x: number; y: number;
+    src: string;
+    alt?: string;
+    width: number;
+    align: ImageAlign;
+    x: number;
+    y: number;
   };
 
   const imgRef = useRef<HTMLImageElement>(null);
@@ -129,12 +158,18 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
   // Wrapper style based on align
   const wrapperStyle: React.CSSProperties = (() => {
     switch (align) {
-      case "left":   return { float: "left",  margin: "0 1em 0.5em 0", clear: "left",  width };
-      case "right":  return { float: "right", margin: "0 0 0.5em 1em", clear: "right", width };
-      case "center": return { display: "block", margin: "0.5em auto", width };
-      case "behind": return { position: "absolute", left: x, top: y, width, zIndex: 0, pointerEvents: "auto" };
-      case "front":  return { position: "absolute", left: x, top: y, width, zIndex: 20, pointerEvents: "auto" };
-      default:       return { display: "inline-block", verticalAlign: "middle", width };
+      case "left":
+        return { float: "left", margin: "0 1em 0.5em 0", clear: "left", width };
+      case "right":
+        return { float: "right", margin: "0 0 0.5em 1em", clear: "right", width };
+      case "center":
+        return { display: "block", margin: "0.5em auto", width };
+      case "behind":
+        return { position: "absolute", left: x, top: y, width, zIndex: 0, pointerEvents: "auto" };
+      case "front":
+        return { position: "absolute", left: x, top: y, width, zIndex: 20, pointerEvents: "auto" };
+      default:
+        return { display: "inline-block", verticalAlign: "middle", width };
     }
   })();
 
@@ -160,15 +195,53 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
             contentEditable={false}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <ToolbarBtn title="Em linha"  active={align === "inline"} onClick={() => updateAttributes({ align: "inline" })}><ImageIcon className="h-3.5 w-3.5" /></ToolbarBtn>
-            <ToolbarBtn title="Esquerda"  active={align === "left"}   onClick={() => updateAttributes({ align: "left" })}><AlignLeft className="h-3.5 w-3.5" /></ToolbarBtn>
-            <ToolbarBtn title="Centro"    active={align === "center"} onClick={() => updateAttributes({ align: "center" })}><AlignCenter className="h-3.5 w-3.5" /></ToolbarBtn>
-            <ToolbarBtn title="Direita"   active={align === "right"}  onClick={() => updateAttributes({ align: "right" })}><AlignRight className="h-3.5 w-3.5" /></ToolbarBtn>
+            <ToolbarBtn
+              title="Em linha"
+              active={align === "inline"}
+              onClick={() => updateAttributes({ align: "inline" })}
+            >
+              <ImageIcon className="h-3.5 w-3.5" />
+            </ToolbarBtn>
+            <ToolbarBtn
+              title="Esquerda"
+              active={align === "left"}
+              onClick={() => updateAttributes({ align: "left" })}
+            >
+              <AlignLeft className="h-3.5 w-3.5" />
+            </ToolbarBtn>
+            <ToolbarBtn
+              title="Centro"
+              active={align === "center"}
+              onClick={() => updateAttributes({ align: "center" })}
+            >
+              <AlignCenter className="h-3.5 w-3.5" />
+            </ToolbarBtn>
+            <ToolbarBtn
+              title="Direita"
+              active={align === "right"}
+              onClick={() => updateAttributes({ align: "right" })}
+            >
+              <AlignRight className="h-3.5 w-3.5" />
+            </ToolbarBtn>
             <span className="docpro-image-toolbar-sep" />
-            <ToolbarBtn title="Atrás do texto" active={align === "behind"} onClick={() => updateAttributes({ align: "behind", x: x || 40, y: y || 40 })}><Layers className="h-3.5 w-3.5" /></ToolbarBtn>
-            <ToolbarBtn title="À frente do texto" active={align === "front"} onClick={() => updateAttributes({ align: "front", x: x || 40, y: y || 40 })}><SquareStack className="h-3.5 w-3.5" /></ToolbarBtn>
+            <ToolbarBtn
+              title="Atrás do texto"
+              active={align === "behind"}
+              onClick={() => updateAttributes({ align: "behind", x: x || 40, y: y || 40 })}
+            >
+              <Layers className="h-3.5 w-3.5" />
+            </ToolbarBtn>
+            <ToolbarBtn
+              title="À frente do texto"
+              active={align === "front"}
+              onClick={() => updateAttributes({ align: "front", x: x || 40, y: y || 40 })}
+            >
+              <SquareStack className="h-3.5 w-3.5" />
+            </ToolbarBtn>
             <span className="docpro-image-toolbar-sep" />
-            <ToolbarBtn title="Excluir" onClick={() => deleteNode()}><Trash2 className="h-3.5 w-3.5" /></ToolbarBtn>
+            <ToolbarBtn title="Excluir" onClick={() => deleteNode()}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </ToolbarBtn>
           </div>
         )}
         <img
@@ -176,7 +249,12 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
           src={src}
           alt={alt ?? ""}
           draggable={false}
-          style={{ width: "100%", height: "auto", display: "block", cursor: isAbsolute ? "move" : "default" }}
+          style={{
+            width: "100%",
+            height: "auto",
+            display: "block",
+            cursor: isAbsolute ? "move" : "default",
+          }}
         />
         {selected && (
           <span
@@ -194,12 +272,26 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
   );
 }
 
-function ToolbarBtn({ active, onClick, title, children }: { active?: boolean; onClick: () => void; title: string; children: React.ReactNode }) {
+function ToolbarBtn({
+  active,
+  onClick,
+  title,
+  children,
+}: {
+  active?: boolean;
+  onClick: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"
       title={title}
-      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onClick(); }}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+      }}
       className={`docpro-image-toolbar-btn ${active ? "is-active" : ""}`}
     >
       {children}
