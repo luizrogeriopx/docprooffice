@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ThanksRouteImport } from './routes/thanks'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as DocIdRouteImport } from './routes/doc.$id'
 
+const ThanksRoute = ThanksRouteImport.update({
+  id: '/thanks',
+  path: '/thanks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/thanks': typeof ThanksRoute
   '/doc/$id': typeof DocIdRoute
   '/share/$token': typeof ShareTokenRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/thanks': typeof ThanksRoute
   '/doc/$id': typeof DocIdRoute
   '/share/$token': typeof ShareTokenRoute
 }
@@ -60,27 +68,49 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/thanks': typeof ThanksRoute
   '/doc/$id': typeof DocIdRoute
   '/share/$token': typeof ShareTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/login' | '/doc/$id' | '/share/$token'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/thanks'
+    | '/doc/$id'
+    | '/share/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login' | '/doc/$id' | '/share/$token'
-  id: '__root__' | '/' | '/dashboard' | '/login' | '/doc/$id' | '/share/$token'
+  to: '/' | '/dashboard' | '/login' | '/thanks' | '/doc/$id' | '/share/$token'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/thanks'
+    | '/doc/$id'
+    | '/share/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
+  ThanksRoute: typeof ThanksRoute
   DocIdRoute: typeof DocIdRoute
   ShareTokenRoute: typeof ShareTokenRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/thanks': {
+      id: '/thanks'
+      path: '/thanks'
+      fullPath: '/thanks'
+      preLoaderRoute: typeof ThanksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -123,6 +153,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
+  ThanksRoute: ThanksRoute,
   DocIdRoute: DocIdRoute,
   ShareTokenRoute: ShareTokenRoute,
 }

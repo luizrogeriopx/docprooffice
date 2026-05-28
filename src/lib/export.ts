@@ -32,6 +32,7 @@ export async function exportToPdf(_editor: Editor, title: string) {
       }
     }
     pdf.save(`${title || "documento"}.pdf`);
+    window.location.href = "/thanks";
   } catch (err) {
     console.error("[export] PDF generation failed", err);
     const { toast } = await import("sonner");
@@ -53,6 +54,7 @@ export async function exportToDocx(editor: Editor, title: string) {
           type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         });
   saveAs(blob, `${title || "documento"}.docx`);
+  window.location.href = "/thanks";
 }
 
 export async function exportToPptx(editor: Editor, title: string) {
@@ -185,5 +187,6 @@ export async function exportToPptx(editor: Editor, title: string) {
     });
   });
 
-  pptx.writeFile({ fileName: `${title || "apresentacao"}.pptx` });
+  await pptx.writeFile({ fileName: `${title || "apresentacao"}.pptx` });
+  window.location.href = "/thanks";
 }
