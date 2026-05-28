@@ -554,7 +554,7 @@ function DocPage({
 
   const layoutMode = editor?.state.doc.attrs.layout || "document";
   const isPresentation = layoutMode === "presentation";
-  const pageHeight = isPresentation ? 251 : A4_HEIGHT;
+  const pageHeight = isPresentation ? 1412 : A4_HEIGHT;
 
   useEffect(() => {
     pageCountRef.current = pageCount;

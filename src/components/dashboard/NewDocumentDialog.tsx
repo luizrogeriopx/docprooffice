@@ -47,7 +47,7 @@ const OPTIONS: Option[] = [
   {
     key: "presentation",
     title: "Apresentação",
-    desc: "Criar ou importar slides 19:6",
+    desc: "Criar ou importar slides 16:9 Retrato",
     icon: Presentation,
   },
   { key: "resume", title: "Currículo", desc: "Modelo pré-pronto", icon: User },
@@ -299,7 +299,7 @@ export function NewDocumentDialog({ open, onOpenChange, userId }: Props) {
                 </div>
                 <div className="font-medium">Nova Apresentação</div>
                 <div className="text-xs text-muted-foreground">
-                  Comece a criar slides do zero na proporção 19:6
+                  Comece a criar slides do zero na proporção 16:9 Retrato
                 </div>
               </button>
 

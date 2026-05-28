@@ -59,9 +59,9 @@ export async function exportToPptx(editor: Editor, title: string) {
   const pptxgen = (await import("pptxgenjs")).default;
   const pptx = new pptxgen();
 
-  // Set custom layout for 19:6 widescreen slides
-  pptx.defineLayout({ name: "CUSTOM_19_6", width: 19, height: 6 });
-  pptx.layout = "CUSTOM_19_6";
+  // Set custom layout for 16:9 portrait slides (9:16 aspect ratio)
+  pptx.defineLayout({ name: "PORTRAIT_16_9", width: 9, height: 16 });
+  pptx.layout = "PORTRAIT_16_9";
 
   const prose = document.querySelector(".ProseMirror") as HTMLElement | null;
   if (!prose) return;
@@ -139,8 +139,8 @@ export async function exportToPptx(editor: Editor, title: string) {
     const slide = pptx.addSlide();
 
     let y = 0.5; // Start y offset in inches
-    const slideWidth = 19;
-    const paddingX = 1.0;
+    const slideWidth = 9;
+    const paddingX = 0.6;
 
     items.forEach((item) => {
       let fontSize = 16;
