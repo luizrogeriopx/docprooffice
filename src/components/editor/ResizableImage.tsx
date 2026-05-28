@@ -96,7 +96,7 @@ export const ResizableImage = Node.create({
   },
 });
 
-function ResizableImageView({ node, updateAttributes, selected, deleteNode }: NodeViewProps) {
+function ResizableImageView({ editor, node, updateAttributes, selected, deleteNode }: NodeViewProps) {
   const { src, alt, width, align, x, y } = node.attrs as {
     src: string;
     alt?: string;
@@ -104,6 +104,30 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
     align: ImageAlign;
     x: number;
     y: number;
+  };
+
+  const isPresentation = editor.state.doc.attrs.layout === "presentation";
+
+  const setAsBackground = () => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const editorContent = el.closest(".docpro-page-content") as HTMLElement | null;
+    if (!editorContent) return;
+
+    const rect = el.getBoundingClientRect();
+    const parentRect = editorContent.getBoundingClientRect();
+    const relativeY = rect.top - parentRect.top + editorContent.scrollTop;
+    
+    // Page height in presentation mode is 446. Gap is 32. Stride is 478.
+    const pageIndex = Math.floor(Math.max(0, relativeY) / 478);
+
+    window.dispatchEvent(
+      new CustomEvent("docpro-set-background", {
+        detail: { src, pageIndex },
+      })
+    );
+
+    deleteNode();
   };
 
   const imgRef = useRef<HTMLImageElement>(null);
@@ -239,6 +263,17 @@ function ResizableImageView({ node, updateAttributes, selected, deleteNode }: No
               <SquareStack className="h-3.5 w-3.5" />
             </ToolbarBtn>
             <span className="docpro-image-toolbar-sep" />
+            {isPresentation && (
+              <>
+                <ToolbarBtn
+                  title="Usar como fundo"
+                  onClick={setAsBackground}
+                >
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 border border-current rounded uppercase tracking-wider bg-primary/10 text-primary">Fundo</span>
+                </ToolbarBtn>
+                <span className="docpro-image-toolbar-sep" />
+              </>
+            )}
             <ToolbarBtn title="Excluir" onClick={() => deleteNode()}>
               <Trash2 className="h-3.5 w-3.5" />
             </ToolbarBtn>

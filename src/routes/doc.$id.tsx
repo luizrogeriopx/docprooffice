@@ -30,7 +30,7 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
-import { Loader2, FileText, Cloud, CloudOff, Check, Share2 } from "lucide-react";
+import { Loader2, FileText, Cloud, CloudOff, Check, Share2, Plus, Copy, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ShareDialog } from "@/components/ShareDialog";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
@@ -129,6 +129,8 @@ function DocumentPage() {
   const [docLoaded, setDocLoaded] = useState(false);
   const [abntMode, setAbntMode] = useState<string>(""); // "", "abnt", "abnt abnt-arial", "abnt abnt-references", "abnt abnt-cover"
   const [layoutMode, setLayoutMode] = useState<"document" | "presentation">("document");
+  const [backgrounds, setBackgrounds] = useState<string[]>([]);
+  const [updateTrigger, setUpdateTrigger] = useState(0);
   const [pageSettings, setPageSettings] = useState<PageSettings>(DEFAULT_PAGE_SETTINGS);
   const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -137,6 +139,185 @@ function DocumentPage() {
   const historyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const applyingRemoteRef = useRef(false);
   const lastSavedHtmlRef = useRef<string>("");
+
+  const isPresentation = layoutMode === "presentation";
+
+  // Event listener for setting slide background
+  useEffect(() => {
+    const handleSetBg = (e: Event) => {
+      const { src, pageIndex } = (e as CustomEvent).detail;
+      setBackgrounds((prev) => {
+        const next = [...prev];
+        while (next.length <= pageIndex) {
+          next.push("");
+        }
+        next[pageIndex] = src;
+        return next;
+      });
+      setTimeout(() => {
+        scheduleSave();
+      }, 50);
+    };
+
+    window.addEventListener("docpro-set-background", handleSetBg);
+    return () => window.removeEventListener("docpro-set-background", handleSetBg);
+  }, [editor, docLoaded, role]);
+
+  const duplicateSlide = (slideIndex: number) => {
+    if (!editor) return;
+    const doc = editor.state.doc;
+    const slides: { start: number; end: number }[] = [];
+    let currentStart = 0;
+    
+    doc.forEach((node, offset) => {
+      if (node.type.name === "pageBreak") {
+        slides.push({
+          start: currentStart,
+          end: offset
+        });
+        currentStart = offset;
+      }
+    });
+    slides.push({
+      start: currentStart,
+      end: doc.content.size
+    });
+    
+    if (slideIndex < 0 || slideIndex >= slides.length) return;
+    const target = slides[slideIndex];
+    
+    const slice = doc.slice(target.start, target.end);
+    const jsonContent = slice.content.toJSON();
+    
+    setBackgrounds((prev) => {
+      const next = [...prev];
+      const bg = next[slideIndex] || "";
+      next.splice(slideIndex + 1, 0, bg);
+      return next;
+    });
+    
+    editor.chain()
+      .focus()
+      .insertContentAt(target.end, [
+        { type: "pageBreak" },
+        ...jsonContent
+      ])
+      .run();
+      
+    toast.success("Slide duplicado");
+    setTimeout(() => {
+      scheduleSave();
+      setUpdateTrigger(prev => prev + 1);
+    }, 100);
+  };
+
+  const deleteSlide = (slideIndex: number) => {
+    if (!editor) return;
+    const doc = editor.state.doc;
+    const slides: { start: number; end: number; hasBreakBefore: boolean }[] = [];
+    let currentStart = 0;
+    let hasBreakBefore = false;
+    
+    doc.forEach((node, offset) => {
+      if (node.type.name === "pageBreak") {
+        slides.push({
+          start: currentStart,
+          end: offset,
+          hasBreakBefore
+        });
+        currentStart = offset;
+        hasBreakBefore = true;
+      }
+    });
+    slides.push({
+      start: currentStart,
+      end: doc.content.size,
+      hasBreakBefore
+    });
+    
+    if (slideIndex < 0 || slideIndex >= slides.length) return;
+    if (slides.length <= 1) {
+      toast.error("Não é possível excluir o único slide.");
+      return;
+    }
+    
+    const target = slides[slideIndex];
+    
+    let from = target.start;
+    let to = target.end;
+    
+    if (target.hasBreakBefore) {
+      from = target.start;
+    } else {
+      to = target.end + 1;
+    }
+    
+    setBackgrounds((prev) => {
+      const next = [...prev];
+      next.splice(slideIndex, 1);
+      return next;
+    });
+    
+    editor.chain()
+      .focus()
+      .deleteRange(from, Math.min(doc.content.size, to))
+      .run();
+      
+    toast.success("Slide excluído");
+    setTimeout(() => {
+      scheduleSave();
+      setUpdateTrigger(prev => prev + 1);
+    }, 100);
+  };
+
+  const addSlide = () => {
+    if (!editor) return;
+    const doc = editor.state.doc;
+    const insertPos = doc.content.size;
+    
+    setBackgrounds((prev) => [...prev, ""]);
+    
+    editor.chain()
+      .focus()
+      .insertContentAt(insertPos, [
+        { type: "pageBreak" },
+        { type: "paragraph" }
+      ])
+      .run();
+      
+    setTimeout(() => {
+      scheduleSave();
+      setUpdateTrigger(prev => prev + 1);
+    }, 100);
+  };
+
+  const scrollToSlide = (slideIndex: number) => {
+    const scrollContainer = document.querySelector(".overflow-auto");
+    if (scrollContainer) {
+      const offsetTop = slideIndex * 478;
+      scrollContainer.scrollTo({
+        top: offsetTop,
+        behavior: "smooth"
+      });
+    }
+  };
+
+  const getSlidesJSON = () => {
+    if (!editor) return [];
+    const doc = editor.state.doc;
+    const slides: any[][] = [[]];
+    let currentIdx = 0;
+    
+    doc.forEach((node) => {
+      if (node.type.name === "pageBreak") {
+        currentIdx++;
+        slides[currentIdx] = [];
+      } else {
+        slides[currentIdx].push(node.toJSON());
+      }
+    });
+    return slides;
+  };
 
   // Note: login no longer forced — view links work for anonymous users.
 
@@ -196,7 +377,10 @@ function DocumentPage() {
         return true;
       },
     },
-    onUpdate: () => scheduleSave(),
+    onUpdate: () => {
+      scheduleSave();
+      setUpdateTrigger((prev) => prev + 1);
+    },
   });
 
   // Load doc
@@ -231,6 +415,7 @@ function DocumentPage() {
       const json = data.content as JSONContent | null;
       const initialLayout = json?.attrs?.layout === "presentation" ? "presentation" : "document";
       setLayoutMode(initialLayout);
+      setBackgrounds(json?.attrs?.backgrounds || []);
       const isEmptyJson = !json || (json?.content?.length === 1 && !json.content[0]?.content);
       applyingRemoteRef.current = true;
       if (isEmptyJson && data.content_html) {
@@ -257,6 +442,12 @@ function DocumentPage() {
           const newHtml = (payload.new as { content_html?: string }).content_html ?? "";
           if (!newHtml || newHtml === lastSavedHtmlRef.current) return;
           if (status === "saving") return; // don't clobber local edits in flight
+          
+          const newContent = (payload.new as { content?: any }).content;
+          if (newContent && newContent.attrs?.backgrounds) {
+            setBackgrounds(newContent.attrs.backgrounds);
+          }
+          
           applyingRemoteRef.current = true;
           const { from, to } = editor.state.selection;
           editor.commands.setContent(newHtml, { emitUpdate: false });
@@ -288,6 +479,7 @@ function DocumentPage() {
     if (json) {
       if (!json.attrs) json.attrs = {};
       json.attrs.layout = layoutMode;
+      json.attrs.backgrounds = backgrounds;
     }
     const updates: { title: string; content: Json; content_html: string } = {
       title, content: json as Json, content_html: html,
@@ -309,6 +501,7 @@ function DocumentPage() {
     if (json) {
       if (!json.attrs) json.attrs = {};
       json.attrs.layout = layoutMode;
+      json.attrs.backgrounds = backgrounds;
     }
     await supabase.from("document_history").insert({
       document_id: id,
@@ -379,6 +572,87 @@ function DocumentPage() {
       <div className="flex min-h-0 flex-1">
         {user && role !== "viewer" && <DocumentsSidebar currentId={id} userId={user.id} />}
 
+        {/* PowerPoint-style Slide Sidebar */}
+        {isPresentation && editor && (
+          <div className="w-56 shrink-0 border-r bg-background flex flex-col min-h-0 select-none">
+            <div className="p-3 border-b flex items-center justify-between">
+              <span className="font-semibold text-sm">Slides</span>
+              {role !== "viewer" && (
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={addSlide} title="Adicionar Slide">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-4">
+              {getSlidesJSON().map((slideNodes, idx) => (
+                <div key={idx} className="flex gap-2 items-start group">
+                  <span className="text-xs text-muted-foreground mt-8 font-medium w-3 text-right">
+                    {idx + 1}
+                  </span>
+                  <div className="flex-1 flex flex-col gap-1.5">
+                    {/* Thumbnail Card */}
+                    <div 
+                      onClick={() => scrollToSlide(idx)}
+                      className="relative border border-border rounded-lg bg-white shadow-sm cursor-pointer overflow-hidden aspect-video transition hover:border-primary hover:ring-1 hover:ring-primary flex-shrink-0"
+                      style={{ 
+                        backgroundImage: backgrounds[idx] ? `url(${backgrounds[idx]})` : undefined,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                      }}
+                    >
+                      {/* Live text/layout preview scaled down */}
+                      <div 
+                        className="absolute inset-0 p-2 origin-top-left pointer-events-none select-none text-[3px] leading-tight overflow-hidden text-slate-800"
+                        style={{
+                          width: 794,
+                          height: 446,
+                          transform: 'scale(0.18)',
+                        }}
+                      >
+                        {slideNodes.map((node: any, i: number) => {
+                          if (node.type === "paragraph") {
+                            return <p key={i} className="mb-1 opacity-70 truncate">{node.content?.[0]?.text || ""}</p>;
+                          }
+                          if (node.type === "heading") {
+                            const level = node.attrs?.level || 1;
+                            const sizeClass = level === 1 ? "font-bold text-[10px]" : "font-bold";
+                            return <p key={i} className={`${sizeClass} mb-1 truncate text-primary`}>{node.content?.[0]?.text || ""}</p>;
+                          }
+                          if (node.type === "resizableImage") {
+                            return <img key={i} src={node.attrs?.src} className="max-w-[40%] max-h-[30%] object-contain mb-1 rounded inline-block" />;
+                          }
+                          return null;
+                        })}
+                      </div>
+                    </div>
+                    {/* Slide Controls (Duplicate / Delete) */}
+                    {role !== "viewer" && (
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => duplicateSlide(idx)}
+                          className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5 px-1 py-0.5 hover:bg-accent rounded"
+                          title="Duplicar"
+                        >
+                          <Copy className="h-3 w-3" />
+                          Duplicar
+                        </button>
+                        <button 
+                          onClick={() => deleteSlide(idx)}
+                          className="text-[10px] text-destructive hover:text-destructive/80 flex items-center gap-0.5 px-1 py-0.5 hover:bg-destructive/10 rounded"
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Excluir
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex min-w-0 flex-1 flex-col">
           {role !== "viewer" && (
             <EditorToolbar
@@ -398,7 +672,13 @@ function DocumentPage() {
               } as React.CSSProperties
             }
           >
-            <DocPage abntMode={abntMode} editor={editor} pageSettings={pageSettings} layoutMode={layoutMode} />
+            <DocPage 
+              abntMode={abntMode} 
+              editor={editor} 
+              pageSettings={pageSettings} 
+              layoutMode={layoutMode} 
+              backgrounds={backgrounds} 
+            />
           </div>
         </div>
 
@@ -554,11 +834,13 @@ function DocPage({
   editor,
   pageSettings,
   layoutMode,
+  backgrounds,
 }: {
   abntMode: string;
   editor: ReturnType<typeof useEditor>;
   pageSettings: PageSettings;
   layoutMode: "document" | "presentation";
+  backgrounds: string[];
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -848,7 +1130,13 @@ function DocPage({
               key={index}
               aria-hidden="true"
               className="pointer-events-none absolute left-0 w-full rounded-sm bg-page shadow-md ring-1 ring-border"
-              style={{ top: index * pageStride, height: pageHeight }}
+              style={{ 
+                top: index * pageStride, 
+                height: pageHeight,
+                backgroundImage: backgrounds && backgrounds[index] ? `url(${backgrounds[index]})` : undefined,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
             />
           ))}
           <div

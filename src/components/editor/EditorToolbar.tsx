@@ -1,4 +1,5 @@
 import { Editor } from "@tiptap/react";
+import { NodeSelection } from "@tiptap/pm/state";
 import { Button } from "@/components/ui/button";
 import {
   Bold,
@@ -284,7 +285,14 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange, onOp
 
   const insertImageUrl = () => {
     const url = window.prompt("URL da imagem");
-    if (url) editor.chain().focus().setImage({ src: url }).run();
+    if (url) {
+      const { selection } = editor.state;
+      let chain = editor.chain().focus();
+      if (selection instanceof NodeSelection) {
+        chain = chain.setTextSelection(selection.to);
+      }
+      chain.setImage({ src: url }).run();
+    }
   };
 
   const uploadImage = async (file: File) => {
@@ -294,7 +302,13 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange, onOp
     const { error } = await supabase.storage.from("doc-images").upload(path, file);
     if (error) return toast.error(error.message);
     const { data } = supabase.storage.from("doc-images").getPublicUrl(path);
-    editor.chain().focus().setImage({ src: data.publicUrl }).run();
+    
+    const { selection } = editor.state;
+    let chain = editor.chain().focus();
+    if (selection instanceof NodeSelection) {
+      chain = chain.setTextSelection(selection.to);
+    }
+    chain.setImage({ src: data.publicUrl }).run();
     toast.success("Imagem enviada");
   };
 
