@@ -128,6 +128,7 @@ function DocumentPage() {
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [docLoaded, setDocLoaded] = useState(false);
   const [abntMode, setAbntMode] = useState<string>(""); // "", "abnt", "abnt abnt-arial", "abnt abnt-references", "abnt abnt-cover"
+  const [layoutMode, setLayoutMode] = useState<"document" | "presentation">("document");
   const [pageSettings, setPageSettings] = useState<PageSettings>(DEFAULT_PAGE_SETTINGS);
   const [pageSettingsOpen, setPageSettingsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -228,6 +229,8 @@ function DocumentPage() {
 
       setTitle(data.title);
       const json = data.content as JSONContent | null;
+      const initialLayout = json?.attrs?.layout === "presentation" ? "presentation" : "document";
+      setLayoutMode(initialLayout);
       const isEmptyJson = !json || (json?.content?.length === 1 && !json.content[0]?.content);
       applyingRemoteRef.current = true;
       if (isEmptyJson && data.content_html) {
@@ -281,8 +284,13 @@ function DocumentPage() {
     if (!editor) return;
     if (role === "viewer") return;
     const html = editor.getHTML();
+    const json = editor.getJSON() as any;
+    if (json) {
+      if (!json.attrs) json.attrs = {};
+      json.attrs.layout = layoutMode;
+    }
     const updates: { title: string; content: Json; content_html: string } = {
-      title, content: editor.getJSON() as Json, content_html: html,
+      title, content: json as Json, content_html: html,
     };
     const { error } = await supabase.from("documents").update(updates).eq("id", id);
     if (error) {
@@ -297,10 +305,15 @@ function DocumentPage() {
 
   const snapshotHistory = async () => {
     if (!editor || !user) return;
+    const json = editor.getJSON() as any;
+    if (json) {
+      if (!json.attrs) json.attrs = {};
+      json.attrs.layout = layoutMode;
+    }
     await supabase.from("document_history").insert({
       document_id: id,
       user_id: user.id,
-      content: editor.getJSON() as Json,
+      content: json as Json,
     });
   };
 
@@ -385,7 +398,7 @@ function DocumentPage() {
               } as React.CSSProperties
             }
           >
-            <DocPage abntMode={abntMode} editor={editor} pageSettings={pageSettings} />
+            <DocPage abntMode={abntMode} editor={editor} pageSettings={pageSettings} layoutMode={layoutMode} />
           </div>
         </div>
 
@@ -540,10 +553,12 @@ function DocPage({
   abntMode,
   editor,
   pageSettings,
+  layoutMode,
 }: {
   abntMode: string;
   editor: ReturnType<typeof useEditor>;
   pageSettings: PageSettings;
+  layoutMode: "document" | "presentation";
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -552,7 +567,6 @@ function DocPage({
   const [pageCount, setPageCount] = useState(1);
   const pageCountRef = useRef(1);
 
-  const layoutMode = editor?.state.doc.attrs.layout || "document";
   const isPresentation = layoutMode === "presentation";
   const pageHeight = isPresentation ? 1412 : A4_HEIGHT;
 
@@ -849,7 +863,7 @@ function DocPage({
               settings={pageSettings}
               pageCount={pageCount}
               pageStride={pageStride}
-              pageHeight={A4_HEIGHT}
+              pageHeight={pageHeight}
               pageWidth={A4_WIDTH}
               marginX={96}
               marginY={96}
