@@ -500,7 +500,7 @@
 .docpro-card-preview table td, .docpro-card-preview table th { border: 1px solid #d1d5db; padding: 4px 8px; }
 .docpro-card-preview a { color: inherit; text-decoration: underline; }
 
-/* ============ Formato de Apresentação (Slides 19:6) ============ */
+/* ============ Formato de Apresentação (Slides 16:9 Widescreen) ============ */
 .docpro-editor.presentation .ProseMirror {
   font-size: 16pt;
   line-height: 1.4;

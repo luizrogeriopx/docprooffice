@@ -568,7 +568,7 @@ function DocPage({
   const pageCountRef = useRef(1);
 
   const isPresentation = layoutMode === "presentation";
-  const pageHeight = isPresentation ? 1412 : A4_HEIGHT;
+  const pageHeight = isPresentation ? 446 : A4_HEIGHT;
 
   useEffect(() => {
     pageCountRef.current = pageCount;
@@ -865,8 +865,8 @@ function DocPage({
               pageStride={pageStride}
               pageHeight={pageHeight}
               pageWidth={A4_WIDTH}
-              marginX={96}
-              marginY={96}
+              marginX={isPresentation ? 48 : 96}
+              marginY={isPresentation ? 32 : 96}
             />
           </div>
         </div>
