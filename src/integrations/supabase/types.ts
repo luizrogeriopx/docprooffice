@@ -223,6 +223,16 @@ export type Database = {
           title: string
         }[]
       }
+      get_shared_document: {
+        Args: { _token: string }
+        Returns: {
+          content: Json
+          content_html: string
+          id: string
+          mode: Database["public"]["Enums"]["share_mode"]
+          title: string
+        }[]
+      }
       is_document_collaborator: {
         Args: { _doc: string; _user: string }
         Returns: boolean
