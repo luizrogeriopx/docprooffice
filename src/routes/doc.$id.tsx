@@ -1047,19 +1047,20 @@ function DocPage({
 
     // Calculate click coordinates relative to the page content bounding rect
     const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = (e.clientX - rect.left) / scale;
+    // Subtract padding (left 48px, top 32px) to match ProseMirror's internal coordinate system
+    const clickX = (e.clientX - rect.left) / scale - 48;
     const clickY = (e.clientY - rect.top) / scale;
 
     const pageIndex = Math.floor(Math.max(0, clickY) / 478);
-    const relativeY = clickY - pageIndex * 478;
+    const relativeY = (clickY - pageIndex * 478) - 32;
 
     // Ensure we clicked inside the slide content area (not in the gap)
-    if (relativeY < 0 || relativeY > 446) return;
+    if (relativeY < -32 || relativeY > 414) return;
 
-    // Constrain coordinates so the inserted text box fits inside slide borders
+    // Constrain coordinates so the inserted text box fits inside slide borders (inside padding)
     const boxWidth = 250;
-    const finalX = Math.max(10, Math.min(794 - boxWidth - 10, clickX));
-    const finalY = Math.max(10, Math.min(446 - 50, relativeY)) + pageIndex * 478;
+    const finalX = Math.max(10, Math.min(698 - boxWidth - 10, clickX));
+    const finalY = Math.max(10, Math.min(382 - 50, relativeY)) + pageIndex * 478;
 
     // Find the logical end of the current slide in the document structure
     const doc = editor.state.doc;

@@ -134,9 +134,10 @@ function TextBoxView({ editor, node, updateAttributes, selected, deleteNode }: N
       let nextX = startX + dx;
       let nextY = startY + dy;
 
-      // Magnetic center snaps (Slide: 794x446, CenterX: 397, CenterY: 223 relative to slide)
+      // Slide size: 794x446. Editable area inside padding (48px left/right, 32px top/bottom): 698x382.
+      // Editor area center: CenterX = 349, CenterY = 191.
       const pageIndex = Math.floor(Math.max(0, nextY) / 478);
-      const pageCenterY = pageIndex * 478 + 223;
+      const pageCenterY = pageIndex * 478 + 191;
 
       const centerX = nextX + w / 2;
       const centerY = nextY + h / 2;
@@ -144,9 +145,9 @@ function TextBoxView({ editor, node, updateAttributes, selected, deleteNode }: N
       let isSnapX = false;
       let isSnapY = false;
 
-      // 4px snap margin
-      if (Math.abs(centerX - 397) < 4) {
-        nextX = 397 - w / 2;
+      // 4px snap margin relative to editor area center (which maps to slide visual center)
+      if (Math.abs(centerX - 349) < 4) {
+        nextX = 349 - w / 2;
         isSnapX = true;
       }
       if (Math.abs(centerY - pageCenterY) < 4) {
@@ -154,16 +155,16 @@ function TextBoxView({ editor, node, updateAttributes, selected, deleteNode }: N
         isSnapY = true;
       }
 
-      // Constrain within slide boundaries
-      nextX = Math.max(0, Math.min(794 - w, nextX));
+      // Constrain within slide boundaries (inside editor padding)
+      nextX = Math.max(0, Math.min(698 - w, nextX));
       
       const relativeY = nextY - pageIndex * 478;
-      const constrainedRelY = Math.max(0, Math.min(446 - h, relativeY));
+      const constrainedRelY = Math.max(0, Math.min(382 - h, relativeY));
       nextY = constrainedRelY + pageIndex * 478;
 
       updateAttributes({ x: nextX, y: nextY });
 
-      // Dispatch custom event to draw guide lines in the page wrapper
+      // Dispatch custom event to draw guide lines in the page wrapper (visual guides use root coordinates 397 / 223)
       window.dispatchEvent(
         new CustomEvent("docpro-element-drag", {
           detail: {
