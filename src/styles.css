@@ -541,3 +541,132 @@
   margin: 16px -48px;
   height: var(--docpro-page-break-height, 40px);
 }
+
+/* ============ Caixas de Texto Arrastáveis (TextBox) ============ */
+.docpro-textbox-wrap {
+  display: block;
+}
+
+.docpro-textbox-frame {
+  position: relative;
+  border: 1px transparent dashed;
+  border-radius: 4px;
+  padding: 4px 8px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.docpro-textbox-frame.presentation-mode {
+  transition: none; /* prevent drag latency due to transitions */
+}
+
+/* Hover border for absolute boxes in presentation mode */
+.docpro-textbox-frame.presentation-mode:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  cursor: move;
+}
+
+/* Active selection border */
+.docpro-textbox-frame.presentation-mode.is-selected {
+  border-color: #3b82f6;
+  border-style: solid;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  cursor: move;
+}
+
+/* Editable text content area inside TextBox */
+.docpro-textbox-content {
+  outline: none;
+  cursor: text;
+}
+
+/* Placeholder for empty TextBox */
+.docpro-textbox-content:empty::before {
+  content: "Clique para digitar...";
+  color: #94a3b8;
+  font-style: italic;
+  pointer-events: none;
+}
+
+/* TextBox Toolbar */
+.docpro-textbox-toolbar {
+  position: absolute;
+  top: -38px;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: oklch(0.98 0.005 240);
+  border: 1px solid oklch(0.9 0.01 240);
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 50;
+}
+
+.docpro-textbox-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  color: #475569;
+  transition: all 0.15s;
+}
+
+.docpro-textbox-toolbar-btn:hover {
+  background-color: oklch(0.92 0.01 240);
+  color: #0f172a;
+}
+
+.docpro-textbox-toolbar-btn.is-active {
+  background-color: var(--primary);
+  color: white;
+}
+
+.docpro-textbox-toolbar-sep {
+  width: 1px;
+  height: 16px;
+  background-color: oklch(0.9 0.01 240);
+  margin: 0 2px;
+}
+
+/* Resize handles */
+.docpro-textbox-resize-handle {
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 24px;
+  background-color: white;
+  border: 1px solid #3b82f6;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ew-resize;
+  color: #3b82f6;
+  z-index: 30;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.docpro-textbox-resize-handle:hover {
+  background-color: #3b82f6;
+  color: white;
+}
+
+/* ============ Canva-style Alignment Guides ============ */
+.docpro-align-guide-v {
+  width: 0;
+  height: 100%;
+  border-left: 1.5px dashed #a855f7 !important;
+  box-shadow: 0 0 4px rgba(168, 85, 247, 0.4);
+}
+
+.docpro-align-guide-h {
+  height: 0;
+  width: 100%;
+  border-top: 1.5px dashed #a855f7 !important;
+  box-shadow: 0 0 4px rgba(168, 85, 247, 0.4);
+}

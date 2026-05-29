@@ -165,16 +165,66 @@ function ResizableImageView({ editor, node, updateAttributes, selected, deleteNo
     const startMouseY = e.clientY;
     const startX = x;
     const startY = y;
+
+    const el = wrapRef.current;
+    const w = el ? el.offsetWidth : width;
+    const h = el ? el.offsetHeight : 200;
+
     const onMove = (ev: MouseEvent) => {
-      updateAttributes({
-        x: startX + (ev.clientX - startMouseX),
-        y: startY + (ev.clientY - startMouseY),
-      });
+      const dx = ev.clientX - startMouseX;
+      const dy = ev.clientY - startMouseY;
+
+      let nextX = startX + dx;
+      let nextY = startY + dy;
+
+      if (isPresentation) {
+        const pageIndex = Math.floor(Math.max(0, nextY) / 478);
+        const pageCenterY = pageIndex * 478 + 223;
+
+        const centerX = nextX + w / 2;
+        const centerY = nextY + h / 2;
+
+        let isSnapX = false;
+        let isSnapY = false;
+
+        // 6px snap margin
+        if (Math.abs(centerX - 397) < 6) {
+          nextX = 397 - w / 2;
+          isSnapX = true;
+        }
+        if (Math.abs(centerY - pageCenterY) < 6) {
+          nextY = pageCenterY - h / 2;
+          isSnapY = true;
+        }
+
+        updateAttributes({ x: nextX, y: nextY });
+
+        window.dispatchEvent(
+          new CustomEvent("docpro-element-drag", {
+            detail: {
+              dragging: true,
+              showVGuide: isSnapX,
+              showHGuide: isSnapY,
+              pageIndex,
+            },
+          })
+        );
+      } else {
+        updateAttributes({ x: nextX, y: nextY });
+      }
     };
+
     const onUp = () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+
+      window.dispatchEvent(
+        new CustomEvent("docpro-element-drag", {
+          detail: { dragging: false },
+        })
+      );
     };
+
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   };

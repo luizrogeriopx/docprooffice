@@ -8,6 +8,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import LinkExt from "@tiptap/extension-link";
 import { ResizableImage } from "@/components/editor/ResizableImage";
+import { TextBox } from "@/components/editor/TextBox";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import { Table } from "@tiptap/extension-table";
@@ -156,6 +157,7 @@ function DocumentPage() {
         HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
       }),
       ResizableImage,
+      TextBox,
       Placeholder.configure({ placeholder: "Comece a escrever..." }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Table.configure({ resizable: true }),
@@ -572,9 +574,38 @@ function DocumentPage() {
       <div className="flex min-h-0 flex-1">
         {user && role !== "viewer" && <DocumentsSidebar currentId={id} userId={user.id} />}
 
-        {/* PowerPoint-style Slide Sidebar */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          {role !== "viewer" && (
+            <EditorToolbar
+              editor={editor}
+              title={title}
+              abntMode={abntMode}
+              onAbntChange={setAbntMode}
+              onOpenPageSettings={() => setPageSettingsOpen(true)}
+            />
+          )}
+          <div
+            className="flex-1 overflow-auto overscroll-contain"
+            style={
+              {
+                touchAction: "pan-y pinch-zoom",
+                WebkitOverflowScrolling: "touch",
+              } as React.CSSProperties
+            }
+          >
+            <DocPage 
+              abntMode={abntMode} 
+              editor={editor} 
+              pageSettings={pageSettings} 
+              layoutMode={layoutMode} 
+              backgrounds={backgrounds} 
+            />
+          </div>
+        </div>
+
+        {/* PowerPoint-style Slide Sidebar on the right */}
         {isPresentation && editor && (
-          <div className="w-56 shrink-0 border-r bg-background flex flex-col min-h-0 select-none">
+          <div className="hidden lg:flex w-56 shrink-0 border-l bg-background flex flex-col min-h-0 select-none">
             <div className="p-3 border-b flex items-center justify-between">
               <span className="font-semibold text-sm">Slides</span>
               {role !== "viewer" && (
@@ -621,6 +652,32 @@ function DocumentPage() {
                           if (node.type === "resizableImage") {
                             return <img key={i} src={node.attrs?.src} className="max-w-[40%] max-h-[30%] object-contain mb-1 rounded inline-block" />;
                           }
+                          if (node.type === "textBox") {
+                            const text = node.content?.map((c: any) => c.text).join("") || "";
+                            const relY = (node.attrs?.y || 100) % 478;
+                            const relX = node.attrs?.x || 100;
+                            const w = node.attrs?.width || 250;
+                            const alignVal = node.attrs?.align || "left";
+                            return (
+                              <div
+                                key={i}
+                                className="absolute border border-dashed border-primary/20 rounded px-1 opacity-80"
+                                style={{
+                                  left: relX * 0.18,
+                                  top: relY * 0.18,
+                                  width: w * 0.18,
+                                  textAlign: alignVal,
+                                  fontSize: 4,
+                                  lineHeight: 1.1,
+                                  overflow: "hidden",
+                                  whiteSpace: "normal",
+                                  wordBreak: "break-word",
+                                }}
+                              >
+                                {text || "Texto"}
+                              </div>
+                            );
+                          }
                           return null;
                         })}
                       </div>
@@ -652,35 +709,6 @@ function DocumentPage() {
             </div>
           </div>
         )}
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          {role !== "viewer" && (
-            <EditorToolbar
-              editor={editor}
-              title={title}
-              abntMode={abntMode}
-              onAbntChange={setAbntMode}
-              onOpenPageSettings={() => setPageSettingsOpen(true)}
-            />
-          )}
-          <div
-            className="flex-1 overflow-auto overscroll-contain"
-            style={
-              {
-                touchAction: "pan-y pinch-zoom",
-                WebkitOverflowScrolling: "touch",
-              } as React.CSSProperties
-            }
-          >
-            <DocPage 
-              abntMode={abntMode} 
-              editor={editor} 
-              pageSettings={pageSettings} 
-              layoutMode={layoutMode} 
-              backgrounds={backgrounds} 
-            />
-          </div>
-        </div>
 
         {role !== "viewer" && <AiSidebar editor={editor} />}
       </div>
@@ -851,6 +879,81 @@ function DocPage({
 
   const isPresentation = layoutMode === "presentation";
   const pageHeight = isPresentation ? 446 : A4_HEIGHT;
+
+  const [guideState, setGuideState] = useState<{
+    dragging: boolean;
+    showVGuide: boolean;
+    showHGuide: boolean;
+    pageIndex: number;
+  }>({
+    dragging: false,
+    showVGuide: false,
+    showHGuide: false,
+    pageIndex: 0,
+  });
+
+  useEffect(() => {
+    const handleDrag = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setGuideState(detail);
+    };
+    window.addEventListener("docpro-element-drag", handleDrag);
+    return () => window.removeEventListener("docpro-element-drag", handleDrag);
+  }, []);
+
+  const onPageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPresentation || !editor) return;
+
+    // Check if clicking on background / empty space
+    const target = e.target as HTMLElement;
+    if (
+      target.closest(".docpro-textbox-frame") ||
+      target.closest(".docpro-image-frame") ||
+      target.closest(".docpro-textbox-toolbar") ||
+      target.closest(".docpro-image-toolbar") ||
+      target.closest(".docpro-image-handle") ||
+      target.closest(".docpro-textbox-resize-handle") ||
+      target.closest("button") ||
+      target.closest("a")
+    ) {
+      return;
+    }
+
+    // Ensure it's empty space (either .docpro-page-content, the root editor div .ProseMirror, or page background div)
+    const isBackground =
+      target.classList.contains("docpro-page-content") ||
+      target.classList.contains("ProseMirror") ||
+      (target.tagName === "DIV" && !target.closest(".docpro-textbox-frame") && !target.closest(".docpro-image-frame"));
+
+    if (!isBackground) return;
+
+    // Calculate click coordinates relative to the page content bounding rect
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = (e.clientX - rect.left) / scale;
+    const clickY = (e.clientY - rect.top) / scale;
+
+    const pageIndex = Math.floor(Math.max(0, clickY) / 478);
+    const relativeY = clickY - pageIndex * 478;
+
+    // Ensure we clicked inside the slide content area (not in the gap)
+    if (relativeY < 0 || relativeY > 446) return;
+
+    // Insert new TextBox at the end of the document, focused
+    const insertPos = editor.state.doc.content.size;
+
+    editor.chain()
+      .focus()
+      .insertContentAt(insertPos, {
+        type: "textBox",
+        attrs: {
+          x: clickX,
+          y: clickY,
+          width: 250,
+          align: "left",
+        },
+      })
+      .run();
+  };
 
   useEffect(() => {
     pageCountRef.current = pageCount;
@@ -1139,8 +1242,36 @@ function DocPage({
               }}
             />
           ))}
+
+          {/* Snap Alignment Guides */}
+          {isPresentation && guideState.dragging && (
+            <>
+              {guideState.showVGuide && (
+                <div
+                  className="pointer-events-none absolute border-l border-dashed border-purple-500 z-50 docpro-align-guide-v"
+                  style={{
+                    left: 397,
+                    top: guideState.pageIndex * pageStride,
+                    height: pageHeight,
+                  }}
+                />
+              )}
+              {guideState.showHGuide && (
+                <div
+                  className="pointer-events-none absolute border-t border-dashed border-purple-500 z-50 docpro-align-guide-h"
+                  style={{
+                    left: 0,
+                    width: A4_WIDTH,
+                    top: guideState.pageIndex * pageStride + 223,
+                  }}
+                />
+              )}
+            </>
+          )}
+
           <div
             ref={contentRef}
+            onClick={onPageClick}
             className={`docpro-page-content relative z-10 px-[96px] py-[96px] ${
               isPresentation ? "presentation-page" : abntMode ? "abnt-page" : ""
             }`}
