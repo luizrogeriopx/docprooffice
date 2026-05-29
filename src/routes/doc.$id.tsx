@@ -217,7 +217,8 @@ function DocumentPage() {
       const { tr, selection } = state;
       
       let activeTextBoxPos: number | null = null;
-      if (selection.node && selection.node.type.name === "textBox") {
+      const nodeSelection = selection as typeof selection & { node?: { type: { name: string } } };
+      if (nodeSelection.node && nodeSelection.node.type.name === "textBox") {
         activeTextBoxPos = selection.from;
       } else {
         const { $from } = selection;
