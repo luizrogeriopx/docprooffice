@@ -189,6 +189,26 @@ function DocumentPage() {
         insertAbntHtml(view, html);
         return true;
       },
+      handleKeyDown: (view, event) => {
+        if (layoutMode === "presentation") {
+          const { $from } = view.state.selection;
+          let insideTextBox = false;
+          for (let d = $from.depth; d > 0; d--) {
+            if ($from.node(d).type.name === "textBox") {
+              insideTextBox = true;
+              break;
+            }
+          }
+          if (!insideTextBox) {
+            const allowedKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab", "Escape"];
+            if (!allowedKeys.includes(event.key) && !event.ctrlKey && !event.metaKey) {
+              event.preventDefault();
+              return true;
+            }
+          }
+        }
+        return false;
+      },
     },
     onUpdate: () => {
       scheduleSave();
@@ -258,7 +278,7 @@ function DocumentPage() {
           start: currentStart,
           end: offset
         });
-        currentStart = offset;
+        currentStart = offset + node.nodeSize;
       }
     });
     slides.push({
@@ -270,7 +290,38 @@ function DocumentPage() {
     const target = slides[slideIndex];
     
     const slice = doc.slice(target.start, target.end);
-    const jsonContent = slice.content.toJSON();
+    
+    // Adjust y coordinate for the duplicated absolute nodes
+    const duplicatedNodes: any[] = [];
+    slice.content.forEach((node) => {
+      const json = node.toJSON();
+      if (json.type === "textBox" || json.type === "resizableImage") {
+        if (!json.attrs) json.attrs = {};
+        json.attrs.y = (json.attrs.y || 0) + 478;
+      }
+      duplicatedNodes.push(json);
+    });
+
+    let tr = editor.state.tr;
+    
+    // Shift subsequent nodes in the document up (increase y by 478)
+    tr.doc.descendants((node, pos) => {
+      if (pos >= target.end) {
+        if (node.type.name === "textBox" || node.type.name === "resizableImage") {
+          tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            y: (node.attrs.y || 0) + 478,
+          });
+        }
+      }
+    });
+    
+    const nodesToInsert = [
+      editor.schema.nodes.pageBreak.create(),
+      ...duplicatedNodes.map(j => editor.schema.nodeFromJSON(j))
+    ];
+    
+    tr.insert(target.end, nodesToInsert);
     
     setBackgrounds((prev) => {
       const next = [...prev];
@@ -279,14 +330,8 @@ function DocumentPage() {
       return next;
     });
     
-    editor.chain()
-      .focus()
-      .insertContentAt(target.end, [
-        { type: "pageBreak" },
-        ...jsonContent
-      ])
-      .run();
-      
+    editor.view.dispatch(tr);
+    
     toast.success("Slide duplicado");
     setTimeout(() => {
       scheduleSave();
@@ -308,7 +353,7 @@ function DocumentPage() {
           end: offset,
           hasBreakBefore
         });
-        currentStart = offset;
+        currentStart = offset + node.nodeSize;
         hasBreakBefore = true;
       }
     });
@@ -325,15 +370,31 @@ function DocumentPage() {
     }
     
     const target = slides[slideIndex];
-    
     let from = target.start;
     let to = target.end;
     
     if (target.hasBreakBefore) {
-      from = target.start;
+      from = target.start - 1; // Preceding pageBreak node position
     } else {
-      to = target.end + 1;
+      to = target.end + 1; // Following pageBreak node position
     }
+    
+    let tr = editor.state.tr;
+    
+    // Shift coordinates of nodes after this deleted range down (decrease y by 478)
+    tr.doc.descendants((node, pos) => {
+      if (pos >= to) {
+        if (node.type.name === "textBox" || node.type.name === "resizableImage") {
+          tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            y: Math.max(0, (node.attrs.y || 0) - 478),
+          });
+        }
+      }
+    });
+    
+    // Delete range
+    tr.delete(from, to);
     
     setBackgrounds((prev) => {
       const next = [...prev];
@@ -341,11 +402,8 @@ function DocumentPage() {
       return next;
     });
     
-    editor.chain()
-      .focus()
-      .deleteRange(from, Math.min(doc.content.size, to))
-      .run();
-      
+    editor.view.dispatch(tr);
+    
     toast.success("Slide excluído");
     setTimeout(() => {
       scheduleSave();
@@ -938,17 +996,35 @@ function DocPage({
     // Ensure we clicked inside the slide content area (not in the gap)
     if (relativeY < 0 || relativeY > 446) return;
 
-    // Insert new TextBox at the end of the document, focused
-    const insertPos = editor.state.doc.content.size;
+    // Constrain coordinates so the inserted text box fits inside slide borders
+    const boxWidth = 250;
+    const finalX = Math.max(10, Math.min(794 - boxWidth - 10, clickX));
+    const finalY = Math.max(10, Math.min(446 - 50, relativeY)) + pageIndex * 478;
+
+    // Find the logical end of the current slide in the document structure
+    const doc = editor.state.doc;
+    const slides: { start: number; end: number }[] = [];
+    let currentStart = 0;
+    doc.forEach((node, offset) => {
+      if (node.type.name === "pageBreak") {
+        slides.push({ start: currentStart, end: offset });
+        currentStart = offset + node.nodeSize;
+      }
+    });
+    slides.push({ start: currentStart, end: doc.content.size });
+
+    // Logical position: insert at the end of the slide, right before the pageBreak
+    const slideRange = slides[pageIndex] || { start: currentStart, end: doc.content.size };
+    const insertPos = slideRange.end;
 
     editor.chain()
       .focus()
       .insertContentAt(insertPos, {
         type: "textBox",
         attrs: {
-          x: clickX,
-          y: clickY,
-          width: 250,
+          x: finalX,
+          y: finalY,
+          width: boxWidth,
           align: "left",
         },
       })
@@ -1155,7 +1231,7 @@ function DocPage({
 
         const measuredHeight = measuredBottom;
         const pages = Math.max(
-          1,
+          isPresentation ? breaks.length + 1 : 1,
           Math.floor(Math.max(0, measuredHeight - 1) / (pageHeight + A4_PAGE_GAP)) + 1,
         );
         if (pageCountRef.current !== pages) {

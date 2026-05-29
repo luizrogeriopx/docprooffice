@@ -263,7 +263,9 @@
 .docpro-image-toolbar-btn {
   display: grid;
   place-items: center;
-  width: 26px;
+  min-width: 26px;
+  width: auto;
+  padding: 0 6px;
   height: 26px;
   border-radius: 4px;
   background: transparent;
@@ -569,7 +571,8 @@
 .docpro-textbox-frame.presentation-mode.is-selected {
   border-color: #3b82f6;
   border-style: solid;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  background-color: white;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08), 0 0 0 2px rgba(59, 130, 246, 0.15);
   cursor: move;
 }
 

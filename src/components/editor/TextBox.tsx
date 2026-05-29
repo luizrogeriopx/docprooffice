@@ -144,15 +144,22 @@ function TextBoxView({ editor, node, updateAttributes, selected, deleteNode }: N
       let isSnapX = false;
       let isSnapY = false;
 
-      // 6px snap margin
-      if (Math.abs(centerX - 397) < 6) {
+      // 4px snap margin
+      if (Math.abs(centerX - 397) < 4) {
         nextX = 397 - w / 2;
         isSnapX = true;
       }
-      if (Math.abs(centerY - pageCenterY) < 6) {
+      if (Math.abs(centerY - pageCenterY) < 4) {
         nextY = pageCenterY - h / 2;
         isSnapY = true;
       }
+
+      // Constrain within slide boundaries
+      nextX = Math.max(0, Math.min(794 - w, nextX));
+      
+      const relativeY = nextY - pageIndex * 478;
+      const constrainedRelY = Math.max(0, Math.min(446 - h, relativeY));
+      nextY = constrainedRelY + pageIndex * 478;
 
       updateAttributes({ x: nextX, y: nextY });
 
