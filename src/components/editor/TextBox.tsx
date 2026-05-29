@@ -110,8 +110,8 @@ function TextBoxView({ editor, node, updateAttributes, selected, deleteNode }: N
       return;
     }
     
-    // If clicking contenteditable area while selected, let the cursor focus
-    if (selected && target.closest("[data-node-view-content]")) {
+    // If clicking contenteditable area, let the cursor focus immediately
+    if (target.closest("[data-node-view-content]")) {
       return;
     }
 

@@ -1037,13 +1037,7 @@ function DocPage({
       return;
     }
 
-    // Ensure it's empty space (either .docpro-page-content, the root editor div .ProseMirror, or page background div)
-    const isBackground =
-      target.classList.contains("docpro-page-content") ||
-      target.classList.contains("ProseMirror") ||
-      (target.tagName === "DIV" && !target.closest(".docpro-textbox-frame") && !target.closest(".docpro-image-frame"));
 
-    if (!isBackground) return;
 
     // Calculate click coordinates relative to the page content bounding rect
     const rect = e.currentTarget.getBoundingClientRect();
