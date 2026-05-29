@@ -142,26 +142,107 @@ function DocumentPage() {
 
   const isPresentation = layoutMode === "presentation";
 
-  // Event listener for setting slide background
-  useEffect(() => {
-    const handleSetBg = (e: Event) => {
-      const { src, pageIndex } = (e as CustomEvent).detail;
-      setBackgrounds((prev) => {
-        const next = [...prev];
-        while (next.length <= pageIndex) {
-          next.push("");
-        }
-        next[pageIndex] = src;
-        return next;
-      });
-      setTimeout(() => {
-        scheduleSave();
-      }, 50);
-    };
+  const editor = useEditor({
+    extensions: [
+      CustomDocument,
+      StarterKit.configure({
+        document: false,
+        heading: { levels: [1, 2, 3, 4, 5, 6] },
+      }),
+      Underline,
+      LinkExt.configure({
+        openOnClick: false,
+        autolink: true,
+        HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
+      }),
+      ResizableImage,
+      Placeholder.configure({ placeholder: "Comece a escrever..." }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
+      TableFormulas,
+      FontSize,
+      FontFamily.configure({ types: ["textStyle"] }),
+      Color.configure({ types: ["textStyle"] }),
+      Highlight.configure({ multicolor: true }),
+      PageBreak,
+      PaginationBreaks,
+    ],
+    content: "",
+    editorProps: {
+      transformPastedHTML: (html) => formatPastedHtmlAbnt(html),
+      handlePaste: (view, event) => {
+        const clipboard = event.clipboardData;
+        if (!clipboard) return false;
 
-    window.addEventListener("docpro-set-background", handleSetBg);
-    return () => window.removeEventListener("docpro-set-background", handleSetBg);
-  }, [editor, docLoaded, role]);
+        const source = clipboard.getData("text/html") || clipboard.getData("text/plain");
+        const html = clipboard.getData("text/html")
+          ? formatPastedHtmlAbnt(source)
+          : formatPlainTextAsAbntHtml(source);
+
+        if (!html) return false;
+        event.preventDefault();
+        insertAbntHtml(view, html);
+        return true;
+      },
+    },
+    onUpdate: () => {
+      scheduleSave();
+      setUpdateTrigger((prev) => prev + 1);
+    },
+  });
+
+  const save = async () => {
+    if (!editor) return;
+    if (role === "viewer") return;
+    const html = editor.getHTML();
+    const json = editor.getJSON() as any;
+    if (json) {
+      if (!json.attrs) json.attrs = {};
+      json.attrs.layout = layoutMode;
+      json.attrs.backgrounds = backgrounds;
+    }
+    const updates: { title: string; content: Json; content_html: string } = {
+      title, content: json as Json, content_html: html,
+    };
+    const { error } = await supabase.from("documents").update(updates).eq("id", id);
+    if (error) {
+      setStatus("error");
+      toast.error("Erro ao salvar");
+    } else {
+      lastSavedHtmlRef.current = html;
+      setStatus("saved");
+      setSavedAt(new Date());
+    }
+  };
+
+  const snapshotHistory = async () => {
+    if (!editor || !user) return;
+    const json = editor.getJSON() as any;
+    if (json) {
+      if (!json.attrs) json.attrs = {};
+      json.attrs.layout = layoutMode;
+      json.attrs.backgrounds = backgrounds;
+    }
+    await supabase.from("document_history").insert({
+      document_id: id,
+      user_id: user.id,
+      content: json as Json,
+    });
+  };
+
+  const scheduleSave = () => {
+    if (!editor || !docLoaded) return;
+    if (applyingRemoteRef.current) return;
+    if (role === "viewer") return;
+    setStatus("saving");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(save, 800);
+    if (historyTimer.current) clearTimeout(historyTimer.current);
+    historyTimer.current = setTimeout(snapshotHistory, 30_000);
+  };
 
   const duplicateSlide = (slideIndex: number) => {
     if (!editor) return;
@@ -331,57 +412,26 @@ function DocumentPage() {
     savePageSettings(id, next);
   };
 
-  const editor = useEditor({
-    extensions: [
-      CustomDocument,
-      StarterKit.configure({
-        document: false,
-        heading: { levels: [1, 2, 3, 4, 5, 6] },
-      }),
-      Underline,
-      LinkExt.configure({
-        openOnClick: false,
-        autolink: true,
-        HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
-      }),
-      ResizableImage,
-      Placeholder.configure({ placeholder: "Comece a escrever..." }),
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableHeader,
-      TableCell,
-      TableFormulas,
-      FontSize,
-      FontFamily.configure({ types: ["textStyle"] }),
-      Color.configure({ types: ["textStyle"] }),
-      Highlight.configure({ multicolor: true }),
-      PageBreak,
-      PaginationBreaks,
-    ],
-    content: "",
-    editorProps: {
-      transformPastedHTML: (html) => formatPastedHtmlAbnt(html),
-      handlePaste: (view, event) => {
-        const clipboard = event.clipboardData;
-        if (!clipboard) return false;
+  // Event listener for setting slide background
+  useEffect(() => {
+    const handleSetBg = (e: Event) => {
+      const { src, pageIndex } = (e as CustomEvent).detail;
+      setBackgrounds((prev) => {
+        const next = [...prev];
+        while (next.length <= pageIndex) {
+          next.push("");
+        }
+        next[pageIndex] = src;
+        return next;
+      });
+      setTimeout(() => {
+        scheduleSave();
+      }, 50);
+    };
 
-        const source = clipboard.getData("text/html") || clipboard.getData("text/plain");
-        const html = clipboard.getData("text/html")
-          ? formatPastedHtmlAbnt(source)
-          : formatPlainTextAsAbntHtml(source);
-
-        if (!html) return false;
-        event.preventDefault();
-        insertAbntHtml(view, html);
-        return true;
-      },
-    },
-    onUpdate: () => {
-      scheduleSave();
-      setUpdateTrigger((prev) => prev + 1);
-    },
-  });
+    window.addEventListener("docpro-set-background", handleSetBg);
+    return () => window.removeEventListener("docpro-set-background", handleSetBg);
+  }, [editor, docLoaded, role]);
 
   // Load doc
   useEffect(() => {
@@ -459,56 +509,6 @@ function DocumentPage() {
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [docLoaded, editor, id, role, status]);
-
-  const scheduleSave = () => {
-    if (!editor || !docLoaded) return;
-    if (applyingRemoteRef.current) return;
-    if (role === "viewer") return;
-    setStatus("saving");
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(save, 800);
-    if (historyTimer.current) clearTimeout(historyTimer.current);
-    historyTimer.current = setTimeout(snapshotHistory, 30_000);
-  };
-
-  const save = async () => {
-    if (!editor) return;
-    if (role === "viewer") return;
-    const html = editor.getHTML();
-    const json = editor.getJSON() as any;
-    if (json) {
-      if (!json.attrs) json.attrs = {};
-      json.attrs.layout = layoutMode;
-      json.attrs.backgrounds = backgrounds;
-    }
-    const updates: { title: string; content: Json; content_html: string } = {
-      title, content: json as Json, content_html: html,
-    };
-    const { error } = await supabase.from("documents").update(updates).eq("id", id);
-    if (error) {
-      setStatus("error");
-      toast.error("Erro ao salvar");
-    } else {
-      lastSavedHtmlRef.current = html;
-      setStatus("saved");
-      setSavedAt(new Date());
-    }
-  };
-
-  const snapshotHistory = async () => {
-    if (!editor || !user) return;
-    const json = editor.getJSON() as any;
-    if (json) {
-      if (!json.attrs) json.attrs = {};
-      json.attrs.layout = layoutMode;
-      json.attrs.backgrounds = backgrounds;
-    }
-    await supabase.from("document_history").insert({
-      document_id: id,
-      user_id: user.id,
-      content: json as Json,
-    });
-  };
 
   // Save on title change
   useEffect(() => {
