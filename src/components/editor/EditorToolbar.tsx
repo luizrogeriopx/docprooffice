@@ -283,15 +283,60 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange, onOp
     else editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
   };
 
+  const getSelectionSlideIndex = () => {
+    const { doc, selection } = editor.state;
+    const { from } = selection;
+    let slideIndex = 0;
+    doc.forEach((node, pos) => {
+      if (node.type.name === "pageBreak" && pos < from) {
+        slideIndex++;
+      }
+    });
+    return slideIndex;
+  };
+
+  const getSlideInsertPos = (slideIndex: number) => {
+    const doc = editor.state.doc;
+    const slides: { start: number; end: number }[] = [];
+    let currentStart = 0;
+    doc.forEach((node, offset) => {
+      if (node.type.name === "pageBreak") {
+        slides.push({ start: currentStart, end: offset });
+        currentStart = offset + node.nodeSize;
+      }
+    });
+    slides.push({ start: currentStart, end: doc.content.size });
+    const range = slides[slideIndex] || { start: currentStart, end: doc.content.size };
+    return range.end;
+  };
+
   const insertImageUrl = () => {
     const url = window.prompt("URL da imagem");
     if (url) {
-      const { selection } = editor.state;
-      let chain = editor.chain().focus();
-      if (selection instanceof NodeSelection) {
-        chain = chain.setTextSelection(selection.to);
+      const isPresentation = editor.state.doc.attrs.layout === "presentation";
+      if (isPresentation) {
+        const slideIndex = getSelectionSlideIndex();
+        const insertPos = getSlideInsertPos(slideIndex);
+        editor.chain()
+          .insertContentAt(insertPos, {
+            type: "resizableImage",
+            attrs: {
+              src: url,
+              align: "front",
+              x: 100,
+              y: 100 + slideIndex * 478,
+              width: 300,
+            }
+          })
+          .run();
+      } else {
+        const { selection } = editor.state;
+        let chain = editor.chain().focus();
+        if (selection instanceof NodeSelection) {
+          chain = chain.setTextSelection(selection.to);
+        }
+        chain.setImage({ src: url }).run();
       }
-      chain.setImage({ src: url }).run();
     }
   };
 
@@ -303,12 +348,30 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange, onOp
     if (error) return toast.error(error.message);
     const { data } = supabase.storage.from("doc-images").getPublicUrl(path);
     
-    const { selection } = editor.state;
-    let chain = editor.chain().focus();
-    if (selection instanceof NodeSelection) {
-      chain = chain.setTextSelection(selection.to);
+    const isPresentation = editor.state.doc.attrs.layout === "presentation";
+    if (isPresentation) {
+      const slideIndex = getSelectionSlideIndex();
+      const insertPos = getSlideInsertPos(slideIndex);
+      editor.chain()
+        .insertContentAt(insertPos, {
+          type: "resizableImage",
+          attrs: {
+            src: data.publicUrl,
+            align: "front",
+            x: 100,
+            y: 100 + slideIndex * 478,
+            width: 300,
+          }
+        })
+        .run();
+    } else {
+      const { selection } = editor.state;
+      let chain = editor.chain().focus();
+      if (selection instanceof NodeSelection) {
+        chain = chain.setTextSelection(selection.to);
+      }
+      chain.setImage({ src: data.publicUrl }).run();
     }
-    chain.setImage({ src: data.publicUrl }).run();
     toast.success("Imagem enviada");
   };
 

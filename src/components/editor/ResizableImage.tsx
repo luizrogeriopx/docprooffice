@@ -278,35 +278,39 @@ function ResizableImageView({ editor, node, updateAttributes, selected, deleteNo
             contentEditable={false}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <ToolbarBtn
-              title="Em linha"
-              active={align === "inline"}
-              onClick={() => updateAttributes({ align: "inline" })}
-            >
-              <ImageIcon className="h-3.5 w-3.5" />
-            </ToolbarBtn>
-            <ToolbarBtn
-              title="Esquerda"
-              active={align === "left"}
-              onClick={() => updateAttributes({ align: "left" })}
-            >
-              <AlignLeft className="h-3.5 w-3.5" />
-            </ToolbarBtn>
-            <ToolbarBtn
-              title="Centro"
-              active={align === "center"}
-              onClick={() => updateAttributes({ align: "center" })}
-            >
-              <AlignCenter className="h-3.5 w-3.5" />
-            </ToolbarBtn>
-            <ToolbarBtn
-              title="Direita"
-              active={align === "right"}
-              onClick={() => updateAttributes({ align: "right" })}
-            >
-              <AlignRight className="h-3.5 w-3.5" />
-            </ToolbarBtn>
-            <span className="docpro-image-toolbar-sep" />
+            {!isPresentation && (
+              <>
+                <ToolbarBtn
+                  title="Em linha"
+                  active={align === "inline"}
+                  onClick={() => updateAttributes({ align: "inline" })}
+                >
+                  <ImageIcon className="h-3.5 w-3.5" />
+                </ToolbarBtn>
+                <ToolbarBtn
+                  title="Esquerda"
+                  active={align === "left"}
+                  onClick={() => updateAttributes({ align: "left" })}
+                >
+                  <AlignLeft className="h-3.5 w-3.5" />
+                </ToolbarBtn>
+                <ToolbarBtn
+                  title="Centro"
+                  active={align === "center"}
+                  onClick={() => updateAttributes({ align: "center" })}
+                >
+                  <AlignCenter className="h-3.5 w-3.5" />
+                </ToolbarBtn>
+                <ToolbarBtn
+                  title="Direita"
+                  active={align === "right"}
+                  onClick={() => updateAttributes({ align: "right" })}
+                >
+                  <AlignRight className="h-3.5 w-3.5" />
+                </ToolbarBtn>
+                <span className="docpro-image-toolbar-sep" />
+              </>
+            )}
             <ToolbarBtn
               title="Atrás do texto"
               active={align === "behind"}
