@@ -50,6 +50,9 @@ import type { Json } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/doc/$id")({
   component: DocumentPage,
+  validateSearch: (search: Record<string, unknown>): { token?: string } => ({
+    token: typeof search.token === "string" ? search.token : undefined,
+  }),
   head: () => ({ meta: [{ title: "Editor — DocPro" }] }),
 });
 
@@ -121,6 +124,7 @@ const CustomDocument = Document.extend({
 
 function DocumentPage() {
   const { id } = Route.useParams();
+  const { token: shareToken } = Route.useSearch();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -217,7 +221,8 @@ function DocumentPage() {
       const { tr, selection } = state;
       
       let activeTextBoxPos: number | null = null;
-      if (selection.node && selection.node.type.name === "textBox") {
+      const nodeSelection = selection as typeof selection & { node?: { type: { name: string } } };
+      if (nodeSelection.node && nodeSelection.node.type.name === "textBox") {
         activeTextBoxPos = selection.from;
       } else {
         const { $from } = selection;
@@ -557,12 +562,33 @@ function DocumentPage() {
   useEffect(() => {
     if (loading || !editor) return;
     (async () => {
-      const { data, error } = await supabase
-        .from("documents")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-      if (error || !data) {
+      let data: {
+        id: string;
+        user_id?: string;
+        title: string;
+        content: Json;
+        content_html: string;
+      } | null = null;
+
+      // First try a direct read (works for owner / collaborator).
+      const direct = await supabase.from("documents").select("*").eq("id", id).maybeSingle();
+      if (direct.data) {
+        data = direct.data;
+      } else if (shareToken) {
+        // Fall back to a token-validated read for shared viewers (proves possession of the link).
+        const { data: shared } = await supabase.rpc("get_shared_document", { _token: shareToken });
+        const row = Array.isArray(shared) ? shared[0] : shared;
+        if (row && row.id === id) {
+          data = {
+            id: row.id,
+            title: row.title,
+            content: row.content as Json,
+            content_html: row.content_html,
+          };
+        }
+      }
+
+      if (!data) {
         toast.error("Documento não encontrado");
         navigate({ to: user ? "/dashboard" : "/" });
         return;
@@ -580,6 +606,7 @@ function DocumentPage() {
         if (c) r = "collab";
       }
       setRole(r);
+
 
       setTitle(data.title);
       const json = data.content as JSONContent | null;
@@ -1110,7 +1137,6 @@ function DocPage({
     if (!contentEl || !editor) return;
 
     let frame: number | null = null;
-    let observer: ResizeObserver | null = null;
     let previousSignature = "";
     let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
     let isPaginating = false;
@@ -1122,10 +1148,7 @@ function DocPage({
         const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
         if (!prose) return;
 
-        // Disconnect observer temporarily to prevent resize loop during class toggling
-        if (observer) {
-          observer.disconnect();
-        }
+
 
         const styles = window.getComputedStyle(contentEl);
         const paddingTop = parseFloat(styles.paddingTop) || 0;
@@ -1212,10 +1235,6 @@ function DocPage({
           });
         } finally {
           prose.classList.remove("docpro-measuring-pagination");
-          // Reconnect observer
-          if (observer && prose) {
-            observer.observe(prose);
-          }
         }
 
         // Calculate auto breaks line-by-line
