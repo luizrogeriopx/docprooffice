@@ -1122,10 +1122,7 @@ function DocPage({
         const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
         if (!prose) return;
 
-        // Disconnect observer temporarily to prevent resize loop during class toggling
-        if (observer) {
-          observer.disconnect();
-        }
+
 
         const styles = window.getComputedStyle(contentEl);
         const paddingTop = parseFloat(styles.paddingTop) || 0;
