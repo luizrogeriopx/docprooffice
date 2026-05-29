@@ -210,6 +210,66 @@ function DocumentPage() {
         return false;
       },
     },
+    onSelectionUpdate: ({ editor }) => {
+      if (layoutMode !== "presentation") return;
+      const { view } = editor;
+      const { state, dispatch } = view;
+      const { tr, selection } = state;
+      
+      let activeTextBoxPos: number | null = null;
+      if (selection.node && selection.node.type.name === "textBox") {
+        activeTextBoxPos = selection.from;
+      } else {
+        const { $from } = selection;
+        for (let d = $from.depth; d > 0; d--) {
+          if ($from.node(d).type.name === "textBox") {
+            activeTextBoxPos = $from.start(d) - 1;
+            break;
+          }
+        }
+      }
+      
+      const emptyBoxes: { from: number; to: number }[] = [];
+      state.doc.descendants((node, pos) => {
+        if (node.type.name === "textBox") {
+          if (node.textContent.trim() === "" && pos !== activeTextBoxPos) {
+            emptyBoxes.push({ from: pos, to: pos + node.nodeSize });
+          }
+        }
+        return true;
+      });
+      
+      if (emptyBoxes.length > 0) {
+        // Delete in reverse order to keep positions valid
+        for (let i = emptyBoxes.length - 1; i >= 0; i--) {
+          tr.delete(emptyBoxes[i].from, emptyBoxes[i].to);
+        }
+        view.dispatch(tr);
+      }
+    },
+    onBlur: ({ editor }) => {
+      if (layoutMode !== "presentation") return;
+      const { view } = editor;
+      const { state } = view;
+      const tr = state.tr;
+      
+      const emptyBoxes: { from: number; to: number }[] = [];
+      state.doc.descendants((node, pos) => {
+        if (node.type.name === "textBox") {
+          if (node.textContent.trim() === "") {
+            emptyBoxes.push({ from: pos, to: pos + node.nodeSize });
+          }
+        }
+        return true;
+      });
+      
+      if (emptyBoxes.length > 0) {
+        for (let i = emptyBoxes.length - 1; i >= 0; i--) {
+          tr.delete(emptyBoxes[i].from, emptyBoxes[i].to);
+        }
+        view.dispatch(tr);
+      }
+    },
     onUpdate: () => {
       scheduleSave();
       setUpdateTrigger((prev) => prev + 1);
@@ -1018,7 +1078,6 @@ function DocPage({
     const insertPos = slideRange.end;
 
     editor.chain()
-      .focus()
       .insertContentAt(insertPos, {
         type: "textBox",
         attrs: {
@@ -1028,6 +1087,8 @@ function DocPage({
           align: "left",
         },
       })
+      .setTextSelection(insertPos + 1)
+      .focus()
       .run();
   };
 

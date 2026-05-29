@@ -673,3 +673,30 @@
   border-top: 1.5px dashed #a855f7 !important;
   box-shadow: 0 0 4px rgba(168, 85, 247, 0.4);
 }
+
+/* ============ Custom Presentation Mode Overrides ============ */
+/* Hide visual page breaks (borders, gradient backgrounds and 'Quebra de página' labels) */
+.docpro-editor.presentation .ProseMirror .docpro-page-break {
+  background: transparent !important;
+  border: none !important;
+}
+
+.docpro-editor.presentation .ProseMirror .docpro-page-break::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Hide blinking text cursor (caret) globally unless inside an active textBox */
+.docpro-editor.presentation .ProseMirror {
+  caret-color: transparent !important;
+}
+
+.docpro-editor.presentation .ProseMirror .docpro-textbox-content {
+  caret-color: auto !important;
+}
+
+/* Hide root editor empty placeholder in presentation mode */
+.docpro-editor.presentation .ProseMirror p.is-editor-empty:first-child::before {
+  content: none !important;
+}
+
