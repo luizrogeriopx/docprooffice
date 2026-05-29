@@ -1111,8 +1111,6 @@ function DocPage({
     if (!contentEl || !editor) return;
 
     let frame: number | null = null;
-    let observer: ResizeObserver | null = null;
-    void observer;
     let previousSignature = "";
     let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
     let isPaginating = false;
