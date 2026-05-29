@@ -562,12 +562,33 @@ function DocumentPage() {
   useEffect(() => {
     if (loading || !editor) return;
     (async () => {
-      const { data, error } = await supabase
-        .from("documents")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-      if (error || !data) {
+      let data: {
+        id: string;
+        user_id?: string;
+        title: string;
+        content: Json;
+        content_html: string;
+      } | null = null;
+
+      // First try a direct read (works for owner / collaborator).
+      const direct = await supabase.from("documents").select("*").eq("id", id).maybeSingle();
+      if (direct.data) {
+        data = direct.data;
+      } else if (shareToken) {
+        // Fall back to a token-validated read for shared viewers (proves possession of the link).
+        const { data: shared } = await supabase.rpc("get_shared_document", { _token: shareToken });
+        const row = Array.isArray(shared) ? shared[0] : shared;
+        if (row && row.id === id) {
+          data = {
+            id: row.id,
+            title: row.title,
+            content: row.content as Json,
+            content_html: row.content_html,
+          };
+        }
+      }
+
+      if (!data) {
         toast.error("Documento não encontrado");
         navigate({ to: user ? "/dashboard" : "/" });
         return;
@@ -585,6 +606,7 @@ function DocumentPage() {
         if (c) r = "collab";
       }
       setRole(r);
+
 
       setTitle(data.title);
       const json = data.content as JSONContent | null;
