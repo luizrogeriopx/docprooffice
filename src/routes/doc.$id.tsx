@@ -124,6 +124,7 @@ const CustomDocument = Document.extend({
 
 function DocumentPage() {
   const { id } = Route.useParams();
+  const { token: shareToken } = Route.useSearch();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
