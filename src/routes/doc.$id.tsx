@@ -50,6 +50,9 @@ import type { Json } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/doc/$id")({
   component: DocumentPage,
+  validateSearch: (search: Record<string, unknown>): { token?: string } => ({
+    token: typeof search.token === "string" ? search.token : undefined,
+  }),
   head: () => ({ meta: [{ title: "Editor — DocPro" }] }),
 });
 
