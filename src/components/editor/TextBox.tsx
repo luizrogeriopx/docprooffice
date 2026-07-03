@@ -1,5 +1,6 @@
 import { mergeAttributes, Node } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent, type NodeViewProps } from "@tiptap/react";
+import { NodeSelection } from "@tiptap/pm/state";
 import { useEffect, useRef, useState } from "react";
 import {
   AlignLeft,
@@ -72,7 +73,7 @@ export const TextBox = Node.create({
   },
 });
 
-function TextBoxView({ editor, node, updateAttributes, selected, deleteNode }: NodeViewProps) {
+function TextBoxView({ editor, node, updateAttributes, selected, deleteNode, getPos }: NodeViewProps) {
   const { x, y, width, align } = node.attrs as {
     x: number;
     y: number;
@@ -117,6 +118,13 @@ function TextBoxView({ editor, node, updateAttributes, selected, deleteNode }: N
 
     e.preventDefault();
     e.stopPropagation();
+
+    // Select the node explicitly
+    const pos = getPos();
+    if (typeof pos === "number") {
+      const selection = NodeSelection.create(editor.state.doc, pos);
+      editor.view.dispatch(editor.state.tr.setSelection(selection));
+    }
 
     const startMouseX = e.clientX;
     const startMouseY = e.clientY;

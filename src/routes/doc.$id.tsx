@@ -1182,11 +1182,12 @@ function DocPage({
           docBottom: number;
           block: HTMLElement;
           blockStartPos: number;
+          isSolid?: boolean;
         }> = [];
 
-        // Extract all text blocks that are part of the main flow
-        const textBlocks = Array.from(
-          prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre"),
+        // Extract all text, table, and image blocks that are part of the main flow
+        const blocks = Array.from(
+          prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre, table, .resizable-image-wrap"),
         ).filter(
           (block) =>
             !block.closest(".docpro-page-break") &&
@@ -1195,7 +1196,7 @@ function DocPage({
 
         prose.classList.add("docpro-measuring-pagination");
         try {
-          textBlocks.forEach((block) => {
+          blocks.forEach((block) => {
             let blockStartPos = 0;
             try {
               blockStartPos = editor.view.posAtDOM(block, 0);
@@ -1203,41 +1204,59 @@ function DocPage({
               return;
             }
 
-            const range = document.createRange();
-            range.selectNodeContents(block);
-            const lineRects = Array.from(range.getClientRects()).filter(
-              (rect) => rect.width > 0 && rect.height > 0,
-            );
-            range.detach();
+            const isSolid = block.tagName === "TABLE" || block.classList.contains("resizable-image-wrap") || block.querySelector("img");
 
-            if (lineRects.length === 0) return;
+            if (isSolid) {
+              const rect = block.getBoundingClientRect();
+              if (rect.width > 0 && rect.height > 0) {
+                visualLines.push({
+                  left: rect.left,
+                  top: rect.top,
+                  block,
+                  blockStartPos,
+                  docTop: (rect.top - proseRect.top) / visualScale + paddingTop,
+                  docBottom: (rect.bottom - proseRect.top) / visualScale + paddingTop,
+                  isSolid: true,
+                });
+              }
+            } else {
+              const range = document.createRange();
+              range.selectNodeContents(block);
+              const lineRects = Array.from(range.getClientRects()).filter(
+                (rect) => rect.width > 0 && rect.height > 0,
+              );
+              range.detach();
 
-            // Group client rects by line (roughly same top coordinate)
-            const grouped = new Map<number, DOMRect[]>();
-            lineRects.forEach((rect) => {
-              const key = Math.round(rect.top * 2) / 2;
-              grouped.set(key, [...(grouped.get(key) ?? []), rect]);
-            });
+              if (lineRects.length === 0) return;
 
-            grouped.forEach((rects) => {
-              const left = Math.min(...rects.map((rect) => rect.left));
-              const top = Math.min(...rects.map((rect) => rect.top));
-              const bottom = Math.max(...rects.map((rect) => rect.bottom));
-              visualLines.push({
-                left,
-                top,
-                block,
-                blockStartPos,
-                docTop: (top - proseRect.top) / visualScale + paddingTop,
-                docBottom: (bottom - proseRect.top) / visualScale + paddingTop,
+              // Group client rects by line (roughly same top coordinate)
+              const grouped = new Map<number, DOMRect[]>();
+              lineRects.forEach((rect) => {
+                const key = Math.round(rect.top * 2) / 2;
+                grouped.set(key, [...(grouped.get(key) ?? []), rect]);
               });
-            });
+
+              grouped.forEach((rects) => {
+                const left = Math.min(...rects.map((rect) => rect.left));
+                const top = Math.min(...rects.map((rect) => rect.top));
+                const bottom = Math.max(...rects.map((rect) => rect.bottom));
+                visualLines.push({
+                  left,
+                  top,
+                  block,
+                  blockStartPos,
+                  docTop: (top - proseRect.top) / visualScale + paddingTop,
+                  docBottom: (bottom - proseRect.top) / visualScale + paddingTop,
+                  isSolid: false,
+                });
+              });
+            }
           });
         } finally {
           prose.classList.remove("docpro-measuring-pagination");
         }
 
-        // Calculate auto breaks line-by-line
+        // Calculate auto breaks line-by-line / block-by-block
         let accumulatedShift = 0;
         let measuredBottom = paddingTop + paddingBottom;
 
@@ -1251,12 +1270,14 @@ function DocPage({
             const pageBottom = pageIndex * (pageHeight + A4_PAGE_GAP) + pageHeight - paddingBottom;
 
             if (pageIndex > 0 && lineTop < pageTop) {
-              const pos = findLineStartPos(
-                editor.view,
-                currentLine.block,
-                currentLine.top,
-                currentLine.blockStartPos,
-              );
+              const pos = currentLine.isSolid
+                ? currentLine.blockStartPos
+                : findLineStartPos(
+                    editor.view,
+                    currentLine.block,
+                    currentLine.top,
+                    currentLine.blockStartPos,
+                  );
               const height = Math.max(0, pageTop - lineTop);
               if (height > 0) {
                 const existingBreak = autoBreaks.find((b) => b.pos === pos);
@@ -1271,12 +1292,14 @@ function DocPage({
                 }
               }
             } else if (lineBottom > pageBottom) {
-              const pos = findLineStartPos(
-                editor.view,
-                currentLine.block,
-                currentLine.top,
-                currentLine.blockStartPos,
-              );
+              const pos = currentLine.isSolid
+                ? currentLine.blockStartPos
+                : findLineStartPos(
+                    editor.view,
+                    currentLine.block,
+                    currentLine.top,
+                    currentLine.blockStartPos,
+                  );
               const nextPageY = (pageIndex + 1) * (pageHeight + A4_PAGE_GAP) + paddingTop;
               const height = Math.max(0, nextPageY - lineTop);
               if (height > 0) {
@@ -1320,9 +1343,7 @@ function DocPage({
 
     const schedule = (force = false) => {
       if (isPaginating) return;
-      const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
-      const measuredHeight = prose?.scrollHeight ?? 0;
-      const docSignature = `${editor.state.doc.content.size}:${editor.state.doc.childCount}:${abntMode}:${scale}:${measuredHeight}:${layoutMode}`;
+      const docSignature = `${editor.state.doc.content.size}:${editor.state.doc.childCount}:${abntMode}:${scale}:${layoutMode}`;
       if (!force && docSignature === lastDocSignature) return;
       lastDocSignature = docSignature;
       if (frame !== null) cancelAnimationFrame(frame);

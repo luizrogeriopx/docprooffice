@@ -1,5 +1,6 @@
 import { mergeAttributes, Node, nodeInputRule } from "@tiptap/core";
 import { ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
+import { NodeSelection } from "@tiptap/pm/state";
 import { useEffect, useRef, useState } from "react";
 import {
   AlignLeft,
@@ -96,7 +97,7 @@ export const ResizableImage = Node.create({
   },
 });
 
-function ResizableImageView({ editor, node, updateAttributes, selected, deleteNode }: NodeViewProps) {
+function ResizableImageView({ editor, node, updateAttributes, selected, deleteNode, getPos }: NodeViewProps) {
   const { src, alt, width, align, x, y } = node.attrs as {
     src: string;
     alt?: string;
@@ -155,11 +156,28 @@ function ResizableImageView({ editor, node, updateAttributes, selected, deleteNo
     window.addEventListener("mouseup", onUp);
   };
 
-  // Drag handler for behind/front positioning
+  // Handle click / mousedown to select the image node and optional drag
   const isAbsolute = align === "behind" || align === "front";
-  const onDragStart = (e: React.MouseEvent) => {
-    if (!isAbsolute) return;
-    if ((e.target as HTMLElement).dataset.handle) return;
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    
+    // Don't intercept selection if clicking handles or toolbar
+    if (target.closest(".docpro-image-toolbar") || target.dataset.handle) {
+      return;
+    }
+
+    // Select the node explicitly
+    const pos = getPos();
+    if (typeof pos === "number") {
+      const selection = NodeSelection.create(editor.state.doc, pos);
+      editor.view.dispatch(editor.state.tr.setSelection(selection));
+    }
+
+    if (!isAbsolute) {
+      // For inline images, let browser handle normal events but we've selected it
+      return;
+    }
+
     e.preventDefault();
     const startMouseX = e.clientX;
     const startMouseY = e.clientY;
@@ -270,7 +288,7 @@ function ResizableImageView({ editor, node, updateAttributes, selected, deleteNo
         ref={wrapRef}
         className={`docpro-image-frame ${selected ? "is-selected" : ""}`}
         style={wrapperStyle}
-        onMouseDown={onDragStart}
+        onMouseDown={handleMouseDown}
       >
         {showToolbar && (
           <div
