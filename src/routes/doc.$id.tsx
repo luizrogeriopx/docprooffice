@@ -1220,10 +1220,6 @@ function DocPage({
           });
         } finally {
           prose.classList.remove("docpro-measuring-pagination");
-          // Reconnect observer
-          if (observer && prose) {
-            observer.observe(prose);
-          }
         }
 
         // Calculate auto breaks block-by-block
