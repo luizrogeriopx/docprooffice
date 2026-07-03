@@ -1141,6 +1141,7 @@ function DocPage({
     let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
     let isPaginating = false;
     let lastDocSignature = "";
+    let lastHeightWithWidgets = 0;
 
     const layout = () => {
       isPaginating = true;
@@ -1293,14 +1294,27 @@ function DocPage({
         }
       } finally {
         isPaginating = false;
+        const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
+        if (prose) {
+          lastHeightWithWidgets = prose.scrollHeight;
+        }
       }
     };
 
     const schedule = (force = false) => {
       if (isPaginating) return;
+      const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
+      const currentHeight = prose?.scrollHeight ?? 0;
+
       const docSignature = `${editor.state.doc.content.size}:${editor.state.doc.childCount}:${abntMode}:${scale}:${layoutMode}`;
-      if (!force && docSignature === lastDocSignature) return;
-      lastDocSignature = docSignature;
+      const sigChanged = docSignature !== lastDocSignature;
+      const heightChanged = Math.abs(currentHeight - lastHeightWithWidgets) > 2;
+
+      if (!force && !sigChanged && !heightChanged) return;
+      if (sigChanged) {
+        lastDocSignature = docSignature;
+      }
+
       if (frame !== null) cancelAnimationFrame(frame);
       if (debounceTimeout !== null) clearTimeout(debounceTimeout);
       debounceTimeout = setTimeout(() => {
