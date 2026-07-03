@@ -1175,15 +1175,6 @@ function DocPage({
           pageBreak.style.setProperty("--docpro-page-break-height", `${height}px`);
         });
 
-        // Clear all previous automatic page breaks (custom margins)
-        const allBlocks = prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre, table, .resizable-image-wrap");
-        allBlocks.forEach((b) => {
-          b.style.marginTop = "";
-        });
-
-        // Force synchronous layout reflow to clear cached bounding client rects
-        const _reflow = prose.offsetHeight;
-
         const autoBreaks: PaginationBreakSpec[] = [];
         const visualLines: Array<{
           left: number;
@@ -1193,15 +1184,22 @@ function DocPage({
           block: HTMLElement;
           blockStartPos: number;
           isSolid: boolean;
+          tag: string;
         }> = [];
 
-        // Extract all text, table, and image blocks that are part of the main flow
-        const blocks = Array.from(allBlocks).filter(
+        // Extract all text, table, list item, and image blocks that are part of the main flow
+        const blocks = Array.from(
+          prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre, table, tr, .resizable-image-wrap"),
+        ).filter(
           (block) =>
             !block.closest(".docpro-page-break") &&
-            !(block.tagName !== "LI" && block.closest("li")),
+            // Avoid measuring table cells or paragraphs inside table rows (we only measure the rows)
+            !(block.closest("table") && block.tagName !== "TR") &&
+            // Avoid measuring paragraphs or lists inside list items (we only measure the list items)
+            !(block.closest("li") && block.tagName !== "LI")
         );
 
+        prose.classList.add("docpro-measuring-pagination");
         try {
           blocks.forEach((block) => {
             let blockStartPos = 0;
@@ -1213,6 +1211,9 @@ function DocPage({
 
             const rect = block.getBoundingClientRect();
             if (rect.width > 0 && rect.height > 0) {
+              const tag = block.tagName.toLowerCase();
+              const widgetTag = tag === "li" ? "li" : tag === "tr" ? "tr" : "div";
+
               visualLines.push({
                 left: rect.left,
                 top: rect.top,
@@ -1221,14 +1222,15 @@ function DocPage({
                 docTop: (rect.top - proseRect.top) / visualScale + paddingTop,
                 docBottom: (rect.bottom - proseRect.top) / visualScale + paddingTop,
                 isSolid: true,
+                tag: widgetTag,
               });
             }
           });
         } finally {
-          // No observer to reconnect here
+          prose.classList.remove("docpro-measuring-pagination");
         }
 
-        // Calculate auto breaks block-by-block using margin-top
+        // Calculate auto breaks block-by-block using structurally matching widgets
         let accumulatedShift = 0;
         let measuredBottom = paddingTop + paddingBottom;
 
@@ -1242,23 +1244,49 @@ function DocPage({
             const pageBottom = pageIndex * (pageHeight + A4_PAGE_GAP) + pageHeight - paddingBottom;
 
             if (pageIndex > 0 && lineTop < pageTop) {
+              const pos = currentLine.blockStartPos;
               const height = Math.max(0, pageTop - lineTop);
               if (height > 0) {
-                currentLine.block.style.marginTop = `${height}px`;
-                accumulatedShift += height;
+                const existingBreak = autoBreaks.find((b) => b.pos === pos);
+                if (existingBreak) {
+                  if (height > existingBreak.height) {
+                    accumulatedShift += height - existingBreak.height;
+                    existingBreak.height = height;
+                  }
+                } else {
+                  autoBreaks.push({ pos, height, tag: currentLine.tag });
+                  accumulatedShift += height;
+                }
               }
             } else if (lineBottom > pageBottom) {
+              const pos = currentLine.blockStartPos;
               const nextPageY = (pageIndex + 1) * (pageHeight + A4_PAGE_GAP) + paddingTop;
               const height = Math.max(0, nextPageY - lineTop);
               if (height > 0) {
-                currentLine.block.style.marginTop = `${height}px`;
-                accumulatedShift += height;
+                const existingBreak = autoBreaks.find((b) => b.pos === pos);
+                if (existingBreak) {
+                  if (height > existingBreak.height) {
+                    accumulatedShift += height - existingBreak.height;
+                    existingBreak.height = height;
+                  }
+                } else {
+                  autoBreaks.push({ pos, height, tag: currentLine.tag });
+                  accumulatedShift += height;
+                }
               }
             }
 
             const finalBottom = currentLine.docBottom + accumulatedShift;
             measuredBottom = Math.max(measuredBottom, finalBottom + paddingBottom);
           });
+
+        autoBreaks.sort((a, b) => a.pos - b.pos || b.height - a.height);
+
+        const signature = paginationBreaksSignature(autoBreaks);
+        if (signature !== previousSignature) {
+          previousSignature = signature;
+          setPaginationBreaks(editor.view, autoBreaks);
+        }
 
         const measuredHeight = measuredBottom;
         const pages = Math.max(
