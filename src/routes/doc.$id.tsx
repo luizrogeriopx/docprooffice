@@ -1175,6 +1175,12 @@ function DocPage({
           pageBreak.style.setProperty("--docpro-page-break-height", `${height}px`);
         });
 
+        // Clear all previous automatic page breaks (custom margins)
+        const allBlocks = prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre, table, .resizable-image-wrap");
+        allBlocks.forEach((b) => {
+          b.style.marginTop = "";
+        });
+
         const autoBreaks: PaginationBreakSpec[] = [];
         const visualLines: Array<{
           left: number;
@@ -1187,15 +1193,12 @@ function DocPage({
         }> = [];
 
         // Extract all text, table, and image blocks that are part of the main flow
-        const blocks = Array.from(
-          prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre, table, .resizable-image-wrap"),
-        ).filter(
+        const blocks = Array.from(allBlocks).filter(
           (block) =>
             !block.closest(".docpro-page-break") &&
             !(block.tagName !== "LI" && block.closest("li")),
         );
 
-        prose.classList.add("docpro-measuring-pagination");
         try {
           blocks.forEach((block) => {
             let blockStartPos = 0;
@@ -1219,10 +1222,10 @@ function DocPage({
             }
           });
         } finally {
-          prose.classList.remove("docpro-measuring-pagination");
+          // No observer to reconnect here
         }
 
-        // Calculate auto breaks block-by-block
+        // Calculate auto breaks block-by-block using margin-top
         let accumulatedShift = 0;
         let measuredBottom = paddingTop + paddingBottom;
 
@@ -1236,48 +1239,23 @@ function DocPage({
             const pageBottom = pageIndex * (pageHeight + A4_PAGE_GAP) + pageHeight - paddingBottom;
 
             if (pageIndex > 0 && lineTop < pageTop) {
-              const pos = currentLine.blockStartPos;
               const height = Math.max(0, pageTop - lineTop);
               if (height > 0) {
-                const existingBreak = autoBreaks.find((b) => b.pos === pos);
-                if (existingBreak) {
-                  if (height > existingBreak.height) {
-                    accumulatedShift += height - existingBreak.height;
-                    existingBreak.height = height;
-                  }
-                } else {
-                  autoBreaks.push({ pos, height });
-                  accumulatedShift += height;
-                }
+                currentLine.block.style.marginTop = `${height}px`;
+                accumulatedShift += height;
               }
             } else if (lineBottom > pageBottom) {
-              const pos = currentLine.blockStartPos;
               const nextPageY = (pageIndex + 1) * (pageHeight + A4_PAGE_GAP) + paddingTop;
               const height = Math.max(0, nextPageY - lineTop);
               if (height > 0) {
-                const existingBreak = autoBreaks.find((b) => b.pos === pos);
-                if (existingBreak) {
-                  if (height > existingBreak.height) {
-                    accumulatedShift += height - existingBreak.height;
-                    existingBreak.height = height;
-                  }
-                } else {
-                  autoBreaks.push({ pos, height });
-                  accumulatedShift += height;
-                }
+                currentLine.block.style.marginTop = `${height}px`;
+                accumulatedShift += height;
               }
             }
 
-            measuredBottom = Math.max(measuredBottom, lineBottom + paddingBottom);
+            const finalBottom = currentLine.docBottom + accumulatedShift;
+            measuredBottom = Math.max(measuredBottom, finalBottom + paddingBottom);
           });
-
-        autoBreaks.sort((a, b) => a.pos - b.pos || b.height - a.height);
-
-        const signature = paginationBreaksSignature(autoBreaks);
-        if (signature !== previousSignature) {
-          previousSignature = signature;
-          setPaginationBreaks(editor.view, autoBreaks);
-        }
 
         const measuredHeight = measuredBottom;
         const pages = Math.max(
