@@ -1181,6 +1181,9 @@ function DocPage({
           b.style.marginTop = "";
         });
 
+        // Force synchronous layout reflow to clear cached bounding client rects
+        const _reflow = prose.offsetHeight;
+
         const autoBreaks: PaginationBreakSpec[] = [];
         const visualLines: Array<{
           left: number;
