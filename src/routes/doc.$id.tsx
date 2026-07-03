@@ -1182,7 +1182,7 @@ function DocPage({
           docBottom: number;
           block: HTMLElement;
           blockStartPos: number;
-          isSolid?: boolean;
+          isSolid: boolean;
         }> = [];
 
         // Extract all text, table, and image blocks that are part of the main flow
@@ -1191,7 +1191,7 @@ function DocPage({
         ).filter(
           (block) =>
             !block.closest(".docpro-page-break") &&
-            !(block.tagName === "LI" && block.querySelector("p, h1, h2, h3, h4, h5, h6, pre")),
+            !(block.tagName !== "LI" && block.closest("li")),
         );
 
         prose.classList.add("docpro-measuring-pagination");
@@ -1204,59 +1204,28 @@ function DocPage({
               return;
             }
 
-            const isSolid = block.tagName === "TABLE" || block.classList.contains("resizable-image-wrap") || block.querySelector("img");
-
-            if (isSolid) {
-              const rect = block.getBoundingClientRect();
-              if (rect.width > 0 && rect.height > 0) {
-                visualLines.push({
-                  left: rect.left,
-                  top: rect.top,
-                  block,
-                  blockStartPos,
-                  docTop: (rect.top - proseRect.top) / visualScale + paddingTop,
-                  docBottom: (rect.bottom - proseRect.top) / visualScale + paddingTop,
-                  isSolid: true,
-                });
-              }
-            } else {
-              const range = document.createRange();
-              range.selectNodeContents(block);
-              const lineRects = Array.from(range.getClientRects()).filter(
-                (rect) => rect.width > 0 && rect.height > 0,
-              );
-              range.detach();
-
-              if (lineRects.length === 0) return;
-
-              // Group client rects by line (roughly same top coordinate)
-              const grouped = new Map<number, DOMRect[]>();
-              lineRects.forEach((rect) => {
-                const key = Math.round(rect.top * 2) / 2;
-                grouped.set(key, [...(grouped.get(key) ?? []), rect]);
-              });
-
-              grouped.forEach((rects) => {
-                const left = Math.min(...rects.map((rect) => rect.left));
-                const top = Math.min(...rects.map((rect) => rect.top));
-                const bottom = Math.max(...rects.map((rect) => rect.bottom));
-                visualLines.push({
-                  left,
-                  top,
-                  block,
-                  blockStartPos,
-                  docTop: (top - proseRect.top) / visualScale + paddingTop,
-                  docBottom: (bottom - proseRect.top) / visualScale + paddingTop,
-                  isSolid: false,
-                });
+            const rect = block.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+              visualLines.push({
+                left: rect.left,
+                top: rect.top,
+                block,
+                blockStartPos,
+                docTop: (rect.top - proseRect.top) / visualScale + paddingTop,
+                docBottom: (rect.bottom - proseRect.top) / visualScale + paddingTop,
+                isSolid: true,
               });
             }
           });
         } finally {
           prose.classList.remove("docpro-measuring-pagination");
+          // Reconnect observer
+          if (observer && prose) {
+            observer.observe(prose);
+          }
         }
 
-        // Calculate auto breaks line-by-line / block-by-block
+        // Calculate auto breaks block-by-block
         let accumulatedShift = 0;
         let measuredBottom = paddingTop + paddingBottom;
 
@@ -1270,14 +1239,7 @@ function DocPage({
             const pageBottom = pageIndex * (pageHeight + A4_PAGE_GAP) + pageHeight - paddingBottom;
 
             if (pageIndex > 0 && lineTop < pageTop) {
-              const pos = currentLine.isSolid
-                ? currentLine.blockStartPos
-                : findLineStartPos(
-                    editor.view,
-                    currentLine.block,
-                    currentLine.top,
-                    currentLine.blockStartPos,
-                  );
+              const pos = currentLine.blockStartPos;
               const height = Math.max(0, pageTop - lineTop);
               if (height > 0) {
                 const existingBreak = autoBreaks.find((b) => b.pos === pos);
@@ -1292,14 +1254,7 @@ function DocPage({
                 }
               }
             } else if (lineBottom > pageBottom) {
-              const pos = currentLine.isSolid
-                ? currentLine.blockStartPos
-                : findLineStartPos(
-                    editor.view,
-                    currentLine.block,
-                    currentLine.top,
-                    currentLine.blockStartPos,
-                  );
+              const pos = currentLine.blockStartPos;
               const nextPageY = (pageIndex + 1) * (pageHeight + A4_PAGE_GAP) + paddingTop;
               const height = Math.max(0, nextPageY - lineTop);
               if (height > 0) {
