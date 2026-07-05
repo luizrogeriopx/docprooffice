@@ -432,6 +432,11 @@
   margin: 0 -96px;
   pointer-events: none;
 }
+.docpro-editor .ProseMirror tr.docpro-auto-page-break {
+  display: table-row;
+  height: auto;
+  margin: 0;
+}
 .docpro-editor .ProseMirror.docpro-measuring-pagination .docpro-auto-page-break {
   display: none;
 }
