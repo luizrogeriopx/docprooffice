@@ -922,7 +922,7 @@ function splitLongParagraph(block: string): string[] {
 function getBlockDocumentPosition(view: EditorView, block: HTMLElement): number | null {
   let found: number | null = null;
   view.state.doc.descendants((node, pos) => {
-    if (found !== null || !node.isBlock) return false;
+    if (found !== null) return false;
     if (view.nodeDOM(pos) === block) {
       found = pos;
       return false;
