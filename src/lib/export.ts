@@ -39,13 +39,104 @@ export async function exportToPdf(_editor: Editor, title: string) {
   }
 }
 
-export async function exportToDocx(editor: Editor, title: string) {
+export async function exportToDocx(editor: Editor, title: string, abntMode?: string) {
   const { saveAs } = await import("file-saver");
   // @ts-expect-error no types
   const mod = await import("html-to-docx-buffer");
   const htmlToDocx = (mod as any).default ?? mod;
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title></head><body>${editor.getHTML()}</body></html>`;
-  const buf = await htmlToDocx(html, undefined, { table: { row: { cantSplit: true } } });
+
+  const rawHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title></head><body>${editor.getHTML()}</body></html>`;
+  
+  // Transform HTML to embed styling inline for DOCX parser compatibility
+  let html = rawHtml;
+  if (typeof window !== "undefined") {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(rawHtml, "text/html");
+    let fontFamily = "Arial, sans-serif";
+    if (abntMode && abntMode.includes("abnt")) {
+      fontFamily = abntMode.includes("abnt-arial") ? "Arial, sans-serif" : "'Times New Roman', Times, serif";
+    }
+
+    doc.body.style.fontFamily = fontFamily;
+    doc.body.style.fontSize = "12pt";
+
+    doc.querySelectorAll("p").forEach((p) => {
+      p.style.fontFamily = fontFamily;
+      p.style.fontSize = "12pt";
+      p.style.margin = "0 0 8pt 0";
+
+      if (abntMode && abntMode.includes("abnt")) {
+        p.style.margin = "0";
+        if (abntMode.includes("abnt-cover")) {
+          p.style.textAlign = "center";
+          p.style.textTransform = "uppercase";
+          p.style.lineHeight = "1.5";
+        } else if (abntMode.includes("abnt-references")) {
+          p.style.textAlign = "left";
+          p.style.textIndent = "0";
+          p.style.lineHeight = "1.0";
+          p.style.margin = "0 0 6pt 0";
+        } else {
+          p.style.textAlign = "justify";
+          p.style.textIndent = "1.25cm";
+          p.style.lineHeight = "1.5";
+        }
+      }
+    });
+
+    doc.querySelectorAll("blockquote").forEach((bq) => {
+      bq.style.fontFamily = fontFamily;
+      bq.style.fontSize = "10pt";
+      bq.style.lineHeight = "1.0";
+      bq.style.marginLeft = "4cm";
+      bq.style.textIndent = "0";
+      bq.style.border = "none";
+      bq.style.padding = "0";
+    });
+
+    doc.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((h) => {
+      h.style.fontFamily = fontFamily;
+      h.style.lineHeight = "1.5";
+      h.style.margin = "12pt 0 6pt 0";
+      
+      if (abntMode && abntMode.includes("abnt")) {
+        h.style.fontSize = "12pt";
+        h.style.fontWeight = "bold";
+        h.style.margin = "0 0 12pt 0";
+        if (h.tagName === "H1") {
+          h.style.textTransform = "uppercase";
+        }
+      } else {
+        const level = parseInt(h.tagName.substring(1), 10);
+        const sizes = ["24pt", "18pt", "14pt", "12pt", "11pt", "10pt"];
+        h.style.fontSize = sizes[level - 1] || "12pt";
+      }
+    });
+
+    html = doc.documentElement.outerHTML;
+  }
+
+  const docxOptions: any = {
+    table: { row: { cantSplit: true } },
+    title: title || "documento",
+    margins: {
+      top: 1440,
+      bottom: 1440,
+      left: 1440,
+      right: 1440,
+    },
+  };
+
+  if (abntMode && abntMode.includes("abnt")) {
+    docxOptions.margins = {
+      top: 1700,
+      bottom: 1134,
+      left: 1700,
+      right: 1134,
+    };
+  }
+
+  const buf = await htmlToDocx(html, undefined, docxOptions);
   const blob =
     buf instanceof Blob
       ? buf

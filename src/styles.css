@@ -426,15 +426,43 @@
 }
 
 /* ============ Quebra de página A4 ============ */
+.docpro-editor .ProseMirror {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-kerning: normal;
+}
+
 .docpro-editor .ProseMirror .docpro-auto-page-break {
   display: block;
   height: var(--docpro-auto-page-break-height, 0px);
   margin: 0 -96px;
   pointer-events: none;
 }
-.docpro-editor .ProseMirror.docpro-measuring-pagination .docpro-auto-page-break {
-  display: none;
+
+/* For inline span page breaks, keep margins zero */
+.docpro-editor .ProseMirror span.docpro-auto-page-break {
+  margin: 0 !important;
 }
+
+.docpro-editor .ProseMirror.docpro-measuring-pagination .docpro-auto-page-break {
+  display: none !important;
+}
+
+.docpro-editor .ProseMirror.docpro-measuring-pagination .docpro-table-break-row {
+  display: none !important;
+}
+
+.docpro-auto-page-break,
+.docpro-auto-page-break * {
+  user-select: none !important;
+}
+.docpro-auto-page-break::selection,
+.docpro-auto-page-break *::selection {
+  background: transparent !important;
+  color: transparent !important;
+}
+
 .docpro-editor .ProseMirror .docpro-page-break {
   display: block;
   height: var(--docpro-page-break-height, 40px);
@@ -466,18 +494,106 @@
   outline-offset: 2px;
 }
 
+.docpro-table-break-row td {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.docpro-repeated-header-table th {
+  background-color: oklch(0.96 0.005 240);
+  font-weight: bold;
+  border: 1px solid #d1d5db;
+}
+
 @media print {
+  body {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Hide all UI elements */
+  #root > div > div:first-child,
+  aside,
+  header,
+  nav,
+  button,
+  .docpro-sidebar,
+  .docpro-toolbar,
+  .docpro-textbox-toolbar,
+  .docpro-image-toolbar,
+  [role="dialog"],
+  .toaster,
+  .sonner-toast,
+  div[class*="border-b"],
+  div[class*="bg-background"] > div[class*="flex"] {
+    display: none !important;
+  }
+
+  /* Make the document wrapper full width and take up the page */
+  .docpro-editor {
+    width: 100% !important;
+    max-width: 100% !important;
+    transform: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Make the content take up the whole printed page */
+  .docpro-page-content {
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 3cm 2cm 2cm 3cm !important;
+    box-sizing: border-box !important;
+  }
+
+  .docpro-page-content.presentation-page {
+    padding: 32px 48px !important;
+  }
+
+  /* Hide absolute backgrounds */
+  .docpro-editor > div[aria-hidden="true"] {
+    display: none !important;
+  }
+
+  /* Ensure page break elements break the page correctly */
   .docpro-editor .ProseMirror .docpro-auto-page-break {
-    display: none;
+    display: block !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    page-break-after: always;
+    break-after: page;
+    visibility: hidden;
   }
+
   .docpro-editor .ProseMirror .docpro-page-break {
-    background: none;
-    border: none;
-    height: 0;
-    margin: 0;
+    display: block !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    page-break-after: always;
+    break-after: page;
   }
+  
   .docpro-editor .ProseMirror .docpro-page-break::after {
-    display: none;
+    display: none !important;
+  }
+
+  .docpro-table-break-row {
+    display: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 0;
   }
 }
 

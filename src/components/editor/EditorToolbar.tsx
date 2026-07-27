@@ -138,6 +138,15 @@ const HIGHLIGHT_COLORS = [
   "#c0c0c0", "#808080", "#000000", "#ffffff", "#ffe599", "#fce5cd",
 ];
 
+const FONT_FAMILIES = [
+  { value: "Inter, sans-serif", label: "Inter" },
+  { value: "Arial, sans-serif", label: "Arial" },
+  { value: "'Times New Roman', Times, serif", label: "Times New Roman" },
+  { value: "Georgia, serif", label: "Georgia" },
+  { value: "'Courier New', Courier, monospace", label: "Courier New" },
+  { value: "Montserrat, sans-serif", label: "Montserrat" },
+];
+
 function ColorPalette({
   colors,
   onSelect,
@@ -187,6 +196,7 @@ function ColorPalette({
 export function EditorToolbar({ editor, title, abntMode = "", onAbntChange, onOpenPageSettings }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [currentFontSize, setCurrentFontSize] = useState("12");
+  const [currentFontFamily, setCurrentFontFamily] = useState("Inter, sans-serif");
 
   // Keep the selector synchronized with the text under the caret/click.
   useEffect(() => {
@@ -204,6 +214,19 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange, onOp
     let frame: number | null = null;
     const compute = () => {
       try {
+        const markedFont = editor.getAttributes("textStyle").fontFamily;
+        if (markedFont) {
+          setCurrentFontFamily(markedFont);
+        } else {
+          const textStyleMark = (
+            editor.state.storedMarks ?? editor.state.selection.$from.marks()
+          ).find((mark) => mark.type.name === "textStyle");
+          const activeMarkFont = textStyleMark?.attrs.fontFamily;
+          if (activeMarkFont) {
+            setCurrentFontFamily(activeMarkFont);
+          }
+        }
+
         const markedSize = normalizeSize(editor.getAttributes("textStyle").fontSize);
         if (markedSize) {
           setCurrentFontSize(markedSize);
@@ -384,6 +407,24 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange, onOp
         <Redo className="h-4 w-4" />
       </Btn>
       <Separator orientation="vertical" className="mx-1 h-6" />
+
+      <Select
+        value={currentFontFamily}
+        onValueChange={(v) => {
+          editor.chain().focus().setFontFamily(v).run();
+        }}
+      >
+        <SelectTrigger className="h-8 w-[150px]" title="Família da fonte">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {FONT_FAMILIES.map((f) => (
+            <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.value }}>
+              {f.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       <Select
         value={currentFontSize}
@@ -660,7 +701,7 @@ export function EditorToolbar({ editor, title, abntMode = "", onAbntChange, onOp
             <DropdownMenuItem onClick={() => exportToPdf(editor, title)}>
               <FileText className="mr-2 h-4 w-4" /> PDF (.pdf)
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportToDocx(editor, title)}>
+            <DropdownMenuItem onClick={() => exportToDocx(editor, title, abntMode)}>
               <FileText className="mr-2 h-4 w-4" /> Word (.docx)
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => exportToPptx(editor, title)}>

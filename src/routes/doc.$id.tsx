@@ -876,6 +876,43 @@ function DocumentPage() {
   );
 }
 
+function getDOMTextOffset(parent: HTMLElement, targetOffset: number): { node: Node; offset: number } | null {
+  let currentOffset = 0;
+  const queue: Node[] = [parent];
+  while (queue.length > 0) {
+    const node = queue.shift()!;
+    if (node.nodeType === Node.TEXT_NODE) {
+      const len = node.textContent?.length ?? 0;
+      if (currentOffset + len >= targetOffset) {
+        return { node, offset: targetOffset - currentOffset };
+      }
+      currentOffset += len;
+    } else {
+      for (let i = node.childNodes.length - 1; i >= 0; i--) {
+        queue.unshift(node.childNodes[i]);
+      }
+    }
+  }
+  return null;
+}
+
+function getCharRect(block: HTMLElement, idx: number): DOMRect | null {
+  const domPos = getDOMTextOffset(block, idx);
+  if (!domPos) return null;
+  try {
+    const range = document.createRange();
+    range.setStart(domPos.node, domPos.offset);
+    range.setEnd(domPos.node, Math.min(domPos.node.textContent?.length ?? 0, domPos.offset + 1));
+    const rects = range.getClientRects();
+    if (rects.length > 0) {
+      return rects[0];
+    }
+    return range.getBoundingClientRect();
+  } catch (e) {
+    return null;
+  }
+}
+
 const A4_WIDTH = 794;
 const A4_HEIGHT = 1123;
 const A4_PAGE_GAP = 32;
@@ -1149,16 +1186,14 @@ function DocPage({
         const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
         if (!prose) return;
 
-
-
         const styles = window.getComputedStyle(contentEl);
         const paddingTop = parseFloat(styles.paddingTop) || 0;
         const paddingBottom = parseFloat(styles.paddingBottom) || 0;
-        const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
         const proseRect = prose.getBoundingClientRect();
         const renderedScale = prose.offsetWidth > 0 ? proseRect.width / prose.offsetWidth : scale;
         const visualScale = renderedScale > 0 ? renderedScale : 1;
 
+        // Reset manual breaks temporarily to 0px
         Array.from(prose.children).forEach((child) => {
           if (!(child instanceof HTMLElement)) return;
           if (child.classList.contains("docpro-page-break")) {
@@ -1166,37 +1201,34 @@ function DocPage({
           }
         });
 
-        breaks.forEach((pageBreak) => {
-          const y = pageBreak.offsetTop;
-          const absoluteY = paddingTop + y;
-          const pageIndex = Math.floor(Math.max(0, absoluteY - 1) / (pageHeight + A4_PAGE_GAP));
-          const nextPageContentTop = (pageIndex + 1) * (pageHeight + A4_PAGE_GAP) + paddingTop;
-          const height = Math.max(40, nextPageContentTop - absoluteY);
-          pageBreak.style.setProperty("--docpro-page-break-height", `${height}px`);
-        });
-
         const autoBreaks: PaginationBreakSpec[] = [];
         const visualLines: Array<{
-          left: number;
-          top: number;
-          docTop: number;
-          docBottom: number;
+          naturalTop: number;
+          naturalBottom: number;
           block: HTMLElement;
           blockStartPos: number;
-          isSolid: boolean;
           tag: string;
         }> = [];
 
-        // Extract all text, table, list item, and image blocks that are part of the main flow
+        // Extract all text, table row, list item, and image blocks that are part of the main flow
+        // Plus manual page breaks (.docpro-page-break) so we can process them sequentially in document order.
         const blocks = Array.from(
-          prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre, table, tr, .resizable-image-wrap"),
+          prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre, tr, .resizable-image-wrap, .docpro-page-break"),
         ).filter(
-          (block) =>
-            !block.closest(".docpro-page-break") &&
+          (block) => {
             // Avoid measuring table cells or paragraphs inside table rows (we only measure the rows)
-            !(block.closest("table") && block.tagName !== "TR") &&
+            if (block.closest("table") && block.tagName !== "TR") return false;
             // Avoid measuring paragraphs or lists inside list items (we only measure the list items)
-            !(block.closest("li") && block.tagName !== "LI")
+            if (block.closest("li") && block.tagName !== "LI") return false;
+            // Avoid measuring elements nested inside manual page break containers if any
+            if (block.closest(".docpro-page-break") && !block.classList.contains("docpro-page-break")) return false;
+            // Avoid measuring absolute images
+            if (block.classList.contains("resizable-image-wrap") && 
+                (block.getAttribute("data-align") === "behind" || block.getAttribute("data-align") === "front")) {
+              return false;
+            }
+            return true;
+          }
         );
 
         prose.classList.add("docpro-measuring-pagination");
@@ -1210,18 +1242,15 @@ function DocPage({
             }
 
             const rect = block.getBoundingClientRect();
-            if (rect.width > 0 && rect.height > 0) {
+            if (block.classList.contains("docpro-page-break") || (rect.width > 0 && rect.height > 0)) {
               const tag = block.tagName.toLowerCase();
               const widgetTag = tag === "li" ? "li" : tag === "tr" ? "tr" : "div";
 
               visualLines.push({
-                left: rect.left,
-                top: rect.top,
                 block,
                 blockStartPos,
-                docTop: (rect.top - proseRect.top) / visualScale + paddingTop,
-                docBottom: (rect.bottom - proseRect.top) / visualScale + paddingTop,
-                isSolid: true,
+                naturalTop: (rect.top - proseRect.top) / visualScale + paddingTop,
+                naturalBottom: (rect.bottom - proseRect.top) / visualScale + paddingTop,
                 tag: widgetTag,
               });
             }
@@ -1230,57 +1259,151 @@ function DocPage({
           prose.classList.remove("docpro-measuring-pagination");
         }
 
-        // Calculate auto breaks block-by-block using structurally matching widgets
+        // Sort items by document position (ProseMirror posAtDOM coordinate)
+        visualLines.sort((a, b) => a.blockStartPos - b.blockStartPos);
+
         let accumulatedShift = 0;
-        let measuredBottom = paddingTop + paddingBottom;
+        let currentPageIndex = 0;
+        const pageStride = pageHeight + A4_PAGE_GAP;
+        let totalCalculatedHeight = paddingTop + paddingBottom;
 
-        visualLines
-          .sort((a, b) => a.docTop - b.docTop || a.docBottom - b.docBottom)
-          .forEach((currentLine) => {
-            const lineTop = currentLine.docTop + accumulatedShift;
-            const lineBottom = currentLine.docBottom + accumulatedShift;
-            const pageIndex = Math.floor(Math.max(0, lineTop) / (pageHeight + A4_PAGE_GAP));
-            const pageTop = pageIndex * (pageHeight + A4_PAGE_GAP) + paddingTop;
-            const pageBottom = pageIndex * (pageHeight + A4_PAGE_GAP) + pageHeight - paddingBottom;
+        visualLines.forEach((item) => {
+          const isManualBreak = item.block.classList.contains("docpro-page-break");
+          let lineTop = item.naturalTop + accumulatedShift;
+          let lineBottom = item.naturalBottom + accumulatedShift;
 
-            if (pageIndex > 0 && lineTop < pageTop) {
-              const pos = currentLine.blockStartPos;
-              const height = Math.max(0, pageTop - lineTop);
-              if (height > 0) {
-                const existingBreak = autoBreaks.find((b) => b.pos === pos);
-                if (existingBreak) {
-                  if (height > existingBreak.height) {
-                    accumulatedShift += height - existingBreak.height;
-                    existingBreak.height = height;
+          const nextPageContentTop = (currentPageIndex + 1) * pageStride + paddingTop;
+          const pageBottom = currentPageIndex * pageStride + pageHeight - paddingBottom;
+
+          if (isManualBreak) {
+            const height = Math.max(40, nextPageContentTop - lineTop);
+            item.block.style.setProperty("--docpro-page-break-height", `${height}px`);
+            accumulatedShift += height;
+            currentPageIndex++;
+            
+            const finalBottom = item.naturalTop + accumulatedShift;
+            totalCalculatedHeight = Math.max(totalCalculatedHeight, finalBottom + paddingBottom);
+            return;
+          }
+
+          // If content block crosses page bottom
+          if (lineBottom > pageBottom) {
+            const tag = item.block.tagName.toLowerCase();
+            const isSplittable = (tag === "p" || tag === "li" || tag === "pre") && !item.block.querySelector("img");
+
+            if (isSplittable) {
+              const textContent = item.block.textContent || "";
+              let splitStartIdx = 0;
+
+              while (true) {
+                const searchPageBottom = currentPageIndex * pageStride + pageHeight - paddingBottom;
+                const searchNextPageTop = (currentPageIndex + 1) * pageStride + paddingTop;
+
+                let low = splitStartIdx;
+                let high = textContent.length - 1;
+                let foundCharIdx = -1;
+
+                while (low <= high) {
+                  const mid = Math.floor((low + high) / 2);
+                  const charRect = getCharRect(item.block, mid);
+                  if (!charRect) {
+                    low = mid + 1;
+                    continue;
+                  }
+                  const charNaturalBottom = (charRect.bottom - proseRect.top) / visualScale + paddingTop;
+                  const charShiftedBottom = charNaturalBottom + accumulatedShift;
+
+                  if (charShiftedBottom > searchPageBottom) {
+                    foundCharIdx = mid;
+                    high = mid - 1;
+                  } else {
+                    low = mid + 1;
+                  }
+                }
+
+                if (foundCharIdx !== -1) {
+                  let splitIndex = foundCharIdx;
+                  while (splitIndex > splitStartIdx && textContent[splitIndex - 1] !== " " && textContent[splitIndex - 1] !== "\n") {
+                    splitIndex--;
+                  }
+
+                  if (splitIndex === splitStartIdx) {
+                    if (splitStartIdx === 0) {
+                      const height = Math.max(0, searchNextPageTop - lineTop);
+                      if (height > 0) {
+                        autoBreaks.push({ pos: item.blockStartPos, height, tag: item.tag });
+                        accumulatedShift += height;
+                      }
+                      currentPageIndex++;
+                      break;
+                    } else {
+                      const charRect = getCharRect(item.block, splitStartIdx);
+                      const charNaturalTop = charRect ? (charRect.top - proseRect.top) / visualScale + paddingTop : item.naturalTop;
+                      const charShiftedTop = charNaturalTop + accumulatedShift;
+                      const height = Math.max(0, searchNextPageTop - charShiftedTop);
+
+                      if (height > 0) {
+                        autoBreaks.push({ pos: item.blockStartPos + 1 + splitStartIdx, height, tag: "span" });
+                        accumulatedShift += height;
+                      }
+                      currentPageIndex++;
+                      splitStartIdx = splitStartIdx + 1;
+                    }
+                  } else {
+                    const charRect = getCharRect(item.block, splitIndex);
+                    const charNaturalTop = charRect ? (charRect.top - proseRect.top) / visualScale + paddingTop : item.naturalTop;
+                    const charShiftedTop = charNaturalTop + accumulatedShift;
+                    const height = Math.max(0, searchNextPageTop - charShiftedTop);
+
+                    if (height > 0) {
+                      autoBreaks.push({ pos: item.blockStartPos + 1 + splitIndex, height, tag: "span" });
+                      accumulatedShift += height;
+                    }
+                    currentPageIndex++;
+                    splitStartIdx = splitIndex;
                   }
                 } else {
-                  autoBreaks.push({ pos, height, tag: currentLine.tag });
-                  accumulatedShift += height;
+                  break;
                 }
               }
-            } else if (lineBottom > pageBottom) {
-              const pos = currentLine.blockStartPos;
-              const nextPageY = (pageIndex + 1) * (pageHeight + A4_PAGE_GAP) + paddingTop;
-              const height = Math.max(0, nextPageY - lineTop);
+            } else {
+              // Non-splittable block: push the entire element to the next page
+              const height = Math.max(0, nextPageContentTop - lineTop);
               if (height > 0) {
-                const existingBreak = autoBreaks.find((b) => b.pos === pos);
-                if (existingBreak) {
-                  if (height > existingBreak.height) {
-                    accumulatedShift += height - existingBreak.height;
-                    existingBreak.height = height;
+                let repeatedHeaderData: any = undefined;
+                if (tag === "tr") {
+                  const parentTable = item.block.closest("table");
+                  if (parentTable) {
+                    const firstRow = parentTable.querySelector("tr");
+                    if (firstRow && firstRow !== item.block) {
+                      const cells = Array.from(firstRow.querySelectorAll("td, th"));
+                      repeatedHeaderData = {
+                        colsCount: cells.length,
+                        headerHtml: firstRow.innerHTML,
+                      };
+                    }
                   }
-                } else {
-                  autoBreaks.push({ pos, height, tag: currentLine.tag });
-                  accumulatedShift += height;
                 }
+
+                autoBreaks.push({
+                  pos: item.blockStartPos,
+                  height,
+                  tag: item.tag,
+                  tableHeaderHtml: repeatedHeaderData?.headerHtml,
+                  tableColsCount: repeatedHeaderData?.colsCount,
+                });
+                accumulatedShift += height;
               }
+              currentPageIndex++;
             }
+          }
 
-            const finalBottom = currentLine.docBottom + accumulatedShift;
-            measuredBottom = Math.max(measuredBottom, finalBottom + paddingBottom);
-          });
+          const finalBottom = item.naturalBottom + accumulatedShift;
+          totalCalculatedHeight = Math.max(totalCalculatedHeight, finalBottom + paddingBottom);
+        });
 
-        autoBreaks.sort((a, b) => a.pos - b.pos || b.height - a.height);
+        // Ensure we sort autoBreaks by position
+        autoBreaks.sort((a, b) => a.pos - b.pos);
 
         const signature = paginationBreaksSignature(autoBreaks);
         if (signature !== previousSignature) {
@@ -1288,10 +1411,9 @@ function DocPage({
           setPaginationBreaks(editor.view, autoBreaks);
         }
 
-        const measuredHeight = measuredBottom;
         const pages = Math.max(
           isPresentation ? breaks.length + 1 : 1,
-          Math.floor(Math.max(0, measuredHeight - 1) / (pageHeight + A4_PAGE_GAP)) + 1,
+          Math.floor(Math.max(0, totalCalculatedHeight - 1) / pageStride) + 1,
         );
         if (pageCountRef.current !== pages) {
           pageCountRef.current = pages;
