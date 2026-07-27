@@ -185,13 +185,13 @@ export function NewDocumentDialog({ open, onOpenChange, userId }: Props) {
         const xmlText = await zip.files[slidePath].async("text");
         const xmlDoc = parser.parseFromString(xmlText, "application/xml");
 
-        // Extract paragraph lines
-        const paragraphs = xmlDoc.getElementsByTagName("a:p");
+        // Extract paragraph lines using namespace-agnostic DOM queries
+        const paragraphs = xmlDoc.getElementsByTagNameNS("*", "p");
         const slideLines: string[] = [];
 
         for (let i = 0; i < paragraphs.length; i++) {
           const p = paragraphs[i];
-          const textEls = p.getElementsByTagName("a:t");
+          const textEls = p.getElementsByTagNameNS("*", "t");
           let pText = "";
           for (let j = 0; j < textEls.length; j++) {
             pText += textEls[j].textContent || "";
