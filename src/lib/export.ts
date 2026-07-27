@@ -1,4 +1,44 @@
 import type { Editor } from "@tiptap/react";
+import { createServerFn } from "@tanstack/react-start";
+
+export const generateDocxServer = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => {
+    const input = d as { html: string; title: string; abntMode?: string };
+    return input;
+  })
+  .handler(async ({ data }) => {
+    const mod = await import("html-to-docx-buffer");
+    const htmlToDocx = (mod as any).default ?? mod;
+
+    const defaultMargins = {
+      top: 1440,
+      bottom: 1440,
+      left: 1440,
+      right: 1440,
+    };
+
+    const docxOptions: any = {
+      table: { row: { cantSplit: true } },
+      title: data.title || "documento",
+      margins: defaultMargins,
+      margin: defaultMargins,
+    };
+
+    if (data.abntMode && data.abntMode.includes("abnt")) {
+      const abntMargins = {
+        top: 1700,
+        bottom: 1134,
+        left: 1700,
+        right: 1134,
+      };
+      docxOptions.margins = abntMargins;
+      docxOptions.margin = abntMargins;
+    }
+
+    const buf = await htmlToDocx(data.html, undefined, docxOptions);
+    const base64 = Buffer.from(buf).toString("base64");
+    return { base64 };
+  });
 
 export async function exportToPdf(_editor: Editor, title: string) {
   const el = document.querySelector(".docpro-page-content") as HTMLElement | null;
@@ -49,9 +89,6 @@ export async function exportToDocx(editor: Editor | null, title: string, abntMod
 
   try {
     const { saveAs } = await import("file-saver");
-    // @ts-expect-error no types
-    const mod = await import("html-to-docx-buffer");
-    const htmlToDocx = (mod as any).default ?? mod;
 
     const rawHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title></head><body>${editor.getHTML()}</body></html>`;
     
@@ -124,38 +161,20 @@ export async function exportToDocx(editor: Editor | null, title: string, abntMod
       html = doc.documentElement.outerHTML;
     }
 
-    const defaultMargins = {
-      top: 1440,
-      bottom: 1440,
-      left: 1440,
-      right: 1440,
-    };
-
-    const docxOptions: any = {
-      table: { row: { cantSplit: true } },
-      title: title || "documento",
-      margins: defaultMargins,
-      margin: defaultMargins,
-    };
-
-    if (abntMode && abntMode.includes("abnt")) {
-      const abntMargins = {
-        top: 1700,
-        bottom: 1134,
-        left: 1700,
-        right: 1134,
-      };
-      docxOptions.margins = abntMargins;
-      docxOptions.margin = abntMargins;
+    // Call the server function to build DOCX
+    const res = await generateDocxServer({ html, title, abntMode });
+    
+    // Decode base64 to binary
+    const binary = atob(res.base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
     }
-
-    const buf = await htmlToDocx(html, undefined, docxOptions);
-    const blob =
-      buf instanceof Blob
-        ? buf
-        : new Blob([buf], {
-            type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          });
+    const blob = new Blob([bytes], {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+    
     saveAs(blob, `${title || "documento"}.docx`);
   } catch (err: any) {
     console.error("[export] DOCX generation failed", err);
