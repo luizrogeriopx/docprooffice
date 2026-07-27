@@ -959,7 +959,7 @@ function splitLongParagraph(block: string): string[] {
 function getBlockDocumentPosition(view: EditorView, block: HTMLElement): number | null {
   let found: number | null = null;
   view.state.doc.descendants((node, pos) => {
-    if (found !== null || !node.isBlock) return false;
+    if (found !== null) return false;
     if (view.nodeDOM(pos) === block) {
       found = pos;
       return false;
@@ -967,6 +967,17 @@ function getBlockDocumentPosition(view: EditorView, block: HTMLElement): number 
     return true;
   });
   return found;
+}
+
+function getPaginationBlockPosition(view: EditorView, block: HTMLElement): number | null {
+  const nodePos = getBlockDocumentPosition(view, block);
+  if (nodePos !== null) return nodePos;
+
+  try {
+    return view.posAtDOM(block, 0);
+  } catch {
+    return null;
+  }
 }
 
 function findLineStartPos(
@@ -1189,6 +1200,7 @@ function DocPage({
         const styles = window.getComputedStyle(contentEl);
         const paddingTop = parseFloat(styles.paddingTop) || 0;
         const paddingBottom = parseFloat(styles.paddingBottom) || 0;
+        const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
         const proseRect = prose.getBoundingClientRect();
         const renderedScale = prose.offsetWidth > 0 ? proseRect.width / prose.offsetWidth : scale;
         const visualScale = renderedScale > 0 ? renderedScale : 1;
@@ -1234,16 +1246,25 @@ function DocPage({
         prose.classList.add("docpro-measuring-pagination");
         try {
           blocks.forEach((block) => {
-            let blockStartPos = 0;
-            try {
-              blockStartPos = editor.view.posAtDOM(block, 0);
-            } catch (e) {
-              return;
-            }
-
             const rect = block.getBoundingClientRect();
             if (block.classList.contains("docpro-page-break") || (rect.width > 0 && rect.height > 0)) {
               const tag = block.tagName.toLowerCase();
+
+              if (tag === "table" && rect.height > usablePageHeight + 1) {
+                return;
+              }
+
+              if (tag === "tr") {
+                const table = block.closest("table");
+                const tableRect = table?.getBoundingClientRect();
+                if (tableRect && tableRect.height <= usablePageHeight + 1) {
+                  return;
+                }
+              }
+
+              const blockStartPos = getPaginationBlockPosition(editor.view, block);
+              if (blockStartPos === null) return;
+
               const widgetTag = tag === "li" ? "li" : tag === "tr" ? "tr" : "div";
 
               visualLines.push({

@@ -445,6 +445,13 @@
   margin: 0 !important;
 }
 
+/* For table row page breaks, display as table-row */
+.docpro-editor .ProseMirror tr.docpro-auto-page-break {
+  display: table-row;
+  height: auto;
+  margin: 0;
+}
+
 .docpro-editor .ProseMirror.docpro-measuring-pagination .docpro-auto-page-break {
   display: none !important;
 }
