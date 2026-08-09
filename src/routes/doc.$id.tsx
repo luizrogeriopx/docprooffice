@@ -1465,7 +1465,7 @@ function DocPage({
     };
 
     const scheduleEvt = () => schedule();
-    schedule();
+    schedule(true); // Force the initial pagination layout calculation on mount/initialization
     if (editor) {
       editor.on("update", scheduleEvt);
       editor.on("transaction", scheduleEvt);
@@ -1491,6 +1491,14 @@ function DocPage({
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("focus", handleVisibilityChange);
 
+    // Re-paginate when all custom fonts have finished loading
+    const handleFontsLoaded = () => {
+      schedule(true);
+    };
+    if (typeof document !== "undefined" && document.fonts) {
+      document.fonts.addEventListener("loadingdone", handleFontsLoaded);
+    }
+
     return () => {
       if (frame !== null) cancelAnimationFrame(frame);
       if (debounceTimeout !== null) clearTimeout(debounceTimeout);
@@ -1502,6 +1510,9 @@ function DocPage({
       contentEl.removeEventListener("load", onImgLoad, true);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", handleVisibilityChange);
+      if (typeof document !== "undefined" && document.fonts) {
+        document.fonts.removeEventListener("loadingdone", handleFontsLoaded);
+      }
     };
   }, [editor, abntMode, scale, layoutMode, pageHeight]);
 
