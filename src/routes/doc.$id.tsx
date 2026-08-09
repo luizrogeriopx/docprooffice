@@ -1077,7 +1077,6 @@ function DocPage({
     };
   }, [editor, abntMode, scale, layoutMode, pageHeight]);
 
-  const [debugPagination, setDebugPagination] = useState(false);
   const pageStride = pageHeight + A4_PAGE_GAP;
   const contentHeight = pageCount * pageHeight + Math.max(0, pageCount - 1) * A4_PAGE_GAP;
 
@@ -1086,7 +1085,7 @@ function DocPage({
       <div style={{ width: A4_WIDTH * scale, height: contentHeight * scale, marginInline: "auto" }}>
         <div
           ref={pageRef}
-          className={`docpro-editor relative ${isPresentation ? "presentation" : abntMode} ${debugPagination ? "docpro-debug-active" : ""}`}
+          className={`docpro-editor relative ${isPresentation ? "presentation" : abntMode}`}
           style={{
             width: A4_WIDTH,
             height: contentHeight,
@@ -1106,23 +1105,7 @@ function DocPage({
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               }}
-            >
-              {debugPagination && (
-                <div 
-                  className="absolute border border-dashed border-red-400"
-                  style={{
-                    top: isPresentation ? 32 : abntMode ? 113.385 : 96,
-                    bottom: isPresentation ? 32 : abntMode ? 75.59 : 96,
-                    left: isPresentation ? 48 : abntMode ? 113.385 : 96,
-                    right: isPresentation ? 48 : abntMode ? 75.59 : 96,
-                  }}
-                >
-                  <div className="absolute top-1 left-1 text-[9px] text-red-500 font-mono bg-white px-1 rounded shadow-sm border border-red-200">
-                    Área Útil (Pág {index + 1})
-                  </div>
-                </div>
-              )}
-            </div>
+            />
           ))}
 
           {/* Snap Alignment Guides */}
@@ -1173,28 +1156,6 @@ function DocPage({
         </div>
       </div>
       <div className="h-8" />
-
-      {/* Floating Debug Pagination Control Widget */}
-      <div className="fixed bottom-4 right-4 z-[999] bg-white border border-slate-200 rounded-lg p-3 shadow-lg max-w-xs text-xs space-y-2 text-slate-800">
-        <div className="flex items-center justify-between gap-4">
-          <span className="font-semibold text-purple-700">Debug de Paginação</span>
-          <input
-            type="checkbox"
-            checked={debugPagination}
-            onChange={(e) => setDebugPagination(e.target.checked)}
-            className="h-4 w-4 cursor-pointer accent-purple-600"
-          />
-        </div>
-        {debugPagination && (
-          <div className="space-y-1 font-mono text-[10px] text-slate-500 border-t pt-2">
-            <div>Total Páginas: {pageCount}</div>
-            <div>Altura Útil: {pageHeight - (isPresentation ? 64 : abntMode ? 188.975 : 192)}px</div>
-            <div>Gap Páginas: {A4_PAGE_GAP}px</div>
-            <div>Escala Visual: {scale.toFixed(2)}</div>
-            <div>Largura A4: {A4_WIDTH}px</div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
