@@ -55,7 +55,10 @@ export class PaginationScheduler {
   };
 
   private handleFontsLoaded = () => {
-    this.schedule(true);
+    // Allow the browser to complete a layout reflow after font loading before measuring
+    setTimeout(() => {
+      this.schedule(true);
+    }, 50);
   };
 
   constructor(config: SchedulerConfig) {

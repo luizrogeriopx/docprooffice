@@ -42,14 +42,27 @@ export function runPaginationEngine(
       proseEl.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre, table, tr, .resizable-image-wrap, .docpro-page-break")
     ).filter((block) => {
       const containingTable = block.closest("table");
-      if (containingTable && block !== containingTable && block.tagName !== "TR") return false;
-      if (block.tagName === "TR") {
-        const tableRect = containingTable?.getBoundingClientRect();
-        if (tableRect && tableRect.height / visualScale <= usablePageHeight + 1) return false;
+      
+      // If it's a TABLE element:
+      if (block.tagName === "TABLE") {
+        const tableHeight = block.getBoundingClientRect().height / visualScale;
+        // Keep it only if it fits on a single page
+        return tableHeight <= usablePageHeight + 1;
       }
-      if (block.tagName === "TABLE" && block.getBoundingClientRect().height / visualScale <= usablePageHeight + 1) {
+      
+      // If it's a TR element:
+      if (block.tagName === "TR") {
+        if (!containingTable) return false;
+        const tableHeight = containingTable.getBoundingClientRect().height / visualScale;
+        // Keep it only if the table is too long and needs to be split
+        return tableHeight > usablePageHeight + 1;
+      }
+      
+      // For any other element nested inside a table (like paragraphs in cells):
+      if (containingTable) {
         return false;
       }
+
       if (block.closest("li") && block.tagName !== "LI") return false;
       if (block.closest(".docpro-page-break") && !block.classList.contains("docpro-page-break")) return false;
       if (
@@ -208,7 +221,8 @@ export function runPaginationEngine(
     if (lineBottom > pageBottom) {
       const tag = item.element.tagName.toLowerCase();
       const itemHeight = item.naturalBottom - item.naturalTop;
-      const shouldMove = item.splittableLine || itemHeight <= usablePageHeight + 1;
+      const isAtPageStart = lineTop <= currentPageIndex * pageStride + paddingTop + 10;
+      const shouldMove = item.splittableLine || itemHeight <= usablePageHeight + 1 || !isAtPageStart;
 
       if (shouldMove) {
         let breakPos = item.blockStartPos;
