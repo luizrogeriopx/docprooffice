@@ -1192,11 +1192,14 @@ function DocPage({
     let lastHeightWithWidgets = 0;
 
     const layout = () => {
+      const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
+      if (!prose) return;
+      if (document.hidden || prose.offsetWidth === 0 || prose.offsetHeight === 0) {
+        return;
+      }
+
       isPaginating = true;
       try {
-        const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
-        if (!prose) return;
-
         const styles = window.getComputedStyle(contentEl);
         const paddingTop = parseFloat(styles.paddingTop) || 0;
         const paddingBottom = parseFloat(styles.paddingBottom) || 0;
@@ -1477,6 +1480,14 @@ function DocPage({
     };
     contentEl.addEventListener("load", onImgLoad, true);
 
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        schedule(true);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleVisibilityChange);
+
     return () => {
       if (frame !== null) cancelAnimationFrame(frame);
       if (debounceTimeout !== null) clearTimeout(debounceTimeout);
@@ -1486,6 +1497,8 @@ function DocPage({
       }
       resizeObserver.disconnect();
       contentEl.removeEventListener("load", onImgLoad, true);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleVisibilityChange);
     };
   }, [editor, abntMode, scale, layoutMode, pageHeight]);
 
