@@ -40,17 +40,21 @@ export class PaginationScheduler {
 
   private handleVisibilityChange = () => {
     if (typeof document !== "undefined" && !document.hidden) {
-      const prose = this.config.contentEl.querySelector<HTMLElement>(".ProseMirror");
-      if (!prose) return;
+      // Allow browser layout and styling to fully stabilize after returning to the tab
+      setTimeout(() => {
+        if (document.hidden) return;
+        const prose = this.config.contentEl.querySelector<HTMLElement>(".ProseMirror");
+        if (!prose) return;
 
-      const currentHeight = prose.scrollHeight;
-      const docSignature = this.getDocSignature();
-      const sigChanged = docSignature !== this.lastDocSignature;
-      const heightChanged = Math.abs(currentHeight - this.lastHeightWithWidgets) > 2;
+        const currentHeight = prose.scrollHeight;
+        const docSignature = this.getDocSignature();
+        const sigChanged = docSignature !== this.lastDocSignature;
+        const heightChanged = Math.abs(currentHeight - this.lastHeightWithWidgets) > 2;
 
-      if (sigChanged || heightChanged) {
-        this.schedule(true);
-      }
+        if (sigChanged || heightChanged) {
+          this.schedule(true);
+        }
+      }, 150);
     }
   };
 

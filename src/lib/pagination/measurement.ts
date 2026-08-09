@@ -18,9 +18,18 @@ export function getBlockDocumentPosition(view: EditorView, block: HTMLElement): 
   return found;
 }
 
-export function getPaginationBlockPosition(view: EditorView, block: HTMLElement): number | null {
-  const nodePos = getBlockDocumentPosition(view, block);
-  if (nodePos !== null) return nodePos;
+export function getPaginationBlockPosition(
+  view: EditorView,
+  block: HTMLElement,
+  nodeMap?: Map<HTMLElement, number>
+): number | null {
+  if (nodeMap) {
+    const mapped = nodeMap.get(block);
+    if (mapped !== undefined) return mapped;
+  } else {
+    const nodePos = getBlockDocumentPosition(view, block);
+    if (nodePos !== null) return nodePos;
+  }
 
   try {
     return view.posAtDOM(block, 0);

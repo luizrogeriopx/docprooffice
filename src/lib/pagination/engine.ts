@@ -74,12 +74,26 @@ export function runPaginationEngine(
       return true;
     });
 
+    // Pre-build descendant node map to optimize O(N) DOM lookup to O(1) in layout measurements
+    const nodeMap = new Map<HTMLElement, number>();
+    try {
+      view.state.doc.descendants((node, pos) => {
+        const dom = view.nodeDOM(pos) as HTMLElement;
+        if (dom) {
+          nodeMap.set(dom, pos);
+        }
+        return true;
+      });
+    } catch {
+      // ignore
+    }
+
     // 2. Measure block boundaries and extract line ranges
     blocks.forEach((block) => {
       const rect = block.getBoundingClientRect();
       if (block.classList.contains("docpro-page-break") || (rect.width > 0 && rect.height > 0)) {
         const tag = block.tagName.toLowerCase();
-        const blockStartPos = getPaginationBlockPosition(view, block);
+        const blockStartPos = getPaginationBlockPosition(view, block, nodeMap);
         if (blockStartPos === null) return;
 
         const widgetTag = tag === "li" ? "li" : tag === "tr" ? "tr" : "div";
