@@ -7,6 +7,7 @@ export const generateDocxServer = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data }) => {
+    // @ts-expect-error - html-to-docx-buffer lacks declaration types
     const mod = await import("html-to-docx-buffer");
     const htmlToDocx = (mod as any).default ?? mod;
 
