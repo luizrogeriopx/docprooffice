@@ -27,6 +27,7 @@ export class PaginationScheduler {
   private safetyInitTimeout: any = null;
 
   private resizeObserver: ResizeObserver | null = null;
+  private isBlockedByFocus = false;
   
   private handleEditorUpdate = () => {
     this.schedule(false);
@@ -40,8 +41,10 @@ export class PaginationScheduler {
 
   private handleVisibilityChange = () => {
     if (typeof document !== "undefined" && !document.hidden) {
-      // Allow browser layout and styling to fully stabilize after returning to the tab
+      // Block any layout scheduling for 250ms to ignore garbage resize/ResizeObserver events during tab focus
+      this.isBlockedByFocus = true;
       setTimeout(() => {
+        this.isBlockedByFocus = false;
         if (document.hidden) return;
         const prose = this.config.contentEl.querySelector<HTMLElement>(".ProseMirror");
         if (!prose) return;
@@ -54,7 +57,7 @@ export class PaginationScheduler {
         if (sigChanged || heightChanged) {
           this.schedule(true);
         }
-      }, 150);
+      }, 250);
     }
   };
 
@@ -80,6 +83,7 @@ export class PaginationScheduler {
   }
 
   public schedule(force = false) {
+    if (this.isBlockedByFocus) return;
     if (this.isPaginating) return;
 
     const prose = this.config.contentEl.querySelector<HTMLElement>(".ProseMirror");
