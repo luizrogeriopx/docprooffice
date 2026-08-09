@@ -835,3 +835,28 @@
   content: none !important;
 }
 
+/* ============ Debug Pagination Overlay Styles ============ */
+.docpro-editor.docpro-debug-active .docpro-auto-page-break {
+  border-top: 2px dashed rgba(239, 68, 68, 0.45) !important;
+  border-bottom: 2px dashed rgba(239, 68, 68, 0.45) !important;
+  background: rgba(239, 68, 68, 0.06) !important;
+  position: relative;
+}
+
+.docpro-editor.docpro-debug-active .docpro-auto-page-break::after {
+  content: "Quebra Automática: Altura " attr(style);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #ef4444;
+  color: white;
+  font-family: monospace;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 50;
+  white-space: nowrap;
+}
+

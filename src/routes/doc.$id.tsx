@@ -28,6 +28,7 @@ import {
   setPaginationBreaks,
   type PaginationBreakSpec,
 } from "@/components/editor/PaginationBreaks";
+import { PaginationScheduler } from "@/lib/pagination/scheduler";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
@@ -876,42 +877,7 @@ function DocumentPage() {
   );
 }
 
-function getDOMTextOffset(parent: HTMLElement, targetOffset: number): { node: Node; offset: number } | null {
-  let currentOffset = 0;
-  const queue: Node[] = [parent];
-  while (queue.length > 0) {
-    const node = queue.shift()!;
-    if (node.nodeType === Node.TEXT_NODE) {
-      const len = node.textContent?.length ?? 0;
-      if (currentOffset + len >= targetOffset) {
-        return { node, offset: targetOffset - currentOffset };
-      }
-      currentOffset += len;
-    } else {
-      for (let i = node.childNodes.length - 1; i >= 0; i--) {
-        queue.unshift(node.childNodes[i]);
-      }
-    }
-  }
-  return null;
-}
 
-function getCharRect(block: HTMLElement, idx: number): DOMRect | null {
-  const domPos = getDOMTextOffset(block, idx);
-  if (!domPos) return null;
-  try {
-    const range = document.createRange();
-    range.setStart(domPos.node, domPos.offset);
-    range.setEnd(domPos.node, Math.min(domPos.node.textContent?.length ?? 0, domPos.offset + 1));
-    const rects = range.getClientRects();
-    if (rects.length > 0) {
-      return rects[0];
-    }
-    return range.getBoundingClientRect();
-  } catch (e) {
-    return null;
-  }
-}
 
 const A4_WIDTH = 794;
 const A4_HEIGHT = 1123;
@@ -956,99 +922,7 @@ function splitLongParagraph(block: string): string[] {
   });
 }
 
-function getBlockDocumentPosition(view: EditorView, block: HTMLElement): number | null {
-  let found: number | null = null;
-  view.state.doc.descendants((node, pos) => {
-    if (found !== null) return false;
-    if (view.nodeDOM(pos) === block) {
-      found = pos;
-      return false;
-    }
-    return true;
-  });
-  return found;
-}
 
-function getPaginationBlockPosition(view: EditorView, block: HTMLElement): number | null {
-  const nodePos = getBlockDocumentPosition(view, block);
-  if (nodePos !== null) return nodePos;
-
-  try {
-    return view.posAtDOM(block, 0);
-  } catch {
-    return null;
-  }
-}
-
-function findLineStartPos(
-  view: EditorView,
-  block: HTMLElement,
-  lineTop: number,
-  blockStartPos: number,
-): number {
-  const text = block.textContent || "";
-  if (!text) return blockStartPos;
-
-  const textNodes: Text[] = [];
-  const walk = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
-  let node: Node | null;
-  while ((node = walk.nextNode())) {
-    textNodes.push(node as Text);
-  }
-  if (textNodes.length === 0) return blockStartPos;
-
-  let low = 0;
-  let high = text.length - 1;
-  let bestPos = blockStartPos;
-  let minDiff = Infinity;
-
-  const range = document.createRange();
-
-  const getDOMPos = (index: number): { node: Text; offset: number } | null => {
-    let acc = 0;
-    for (const tNode of textNodes) {
-      if (index >= acc && index <= acc + tNode.length) {
-        return { node: tNode, offset: index - acc };
-      }
-      acc += tNode.length;
-    }
-    return null;
-  };
-
-  while (low <= high) {
-    const mid = Math.floor((low + high) / 2);
-    const domPos = getDOMPos(mid);
-    if (!domPos) break;
-
-    range.setStart(domPos.node, domPos.offset);
-    range.setEnd(domPos.node, Math.min(domPos.node.length, domPos.offset + 1));
-    const rects = range.getClientRects();
-
-    if (rects.length > 0) {
-      const rectTop = rects[0].top;
-      const diff = Math.abs(rectTop - lineTop);
-
-      if (diff < minDiff) {
-        minDiff = diff;
-        try {
-          bestPos = view.posAtDOM(domPos.node, domPos.offset);
-        } catch (e) {
-          // ignore
-        }
-      }
-
-      if (rectTop < lineTop) {
-        low = mid + 1;
-      } else {
-        high = mid - 1;
-      }
-    } else {
-      high = mid - 1;
-    }
-  }
-
-  return bestPos;
-}
 
 function DocPage({
   abntMode,
@@ -1184,354 +1058,26 @@ function DocPage({
     const contentEl = contentRef.current;
     if (!contentEl || !editor) return;
 
-    let frame: number | null = null;
-    let previousSignature = "";
-    let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
-    let isPaginating = false;
-    let lastDocSignature = "";
-    let lastHeightWithWidgets = 0;
+    const scheduler = new PaginationScheduler({
+      editor,
+      contentEl,
+      pageHeight,
+      scale,
+      abntMode,
+      layoutMode,
+      onPageCountChange: (count) => {
+        setPageCount(count);
+      },
+    });
 
-    const layout = () => {
-      const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
-      if (!prose) return;
-      if (document.hidden || prose.offsetWidth === 0 || prose.offsetHeight === 0) {
-        return;
-      }
-
-      isPaginating = true;
-      try {
-        const styles = window.getComputedStyle(contentEl);
-        const paddingTop = parseFloat(styles.paddingTop) || 0;
-        const paddingBottom = parseFloat(styles.paddingBottom) || 0;
-        const usablePageHeight = pageHeight - paddingTop - paddingBottom;
-        const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
-
-        // Reset manual breaks temporarily to 0px
-        Array.from(prose.children).forEach((child) => {
-          if (!(child instanceof HTMLElement)) return;
-          if (child.classList.contains("docpro-page-break")) {
-            child.style.setProperty("--docpro-page-break-height", "0px");
-          }
-        });
-
-        // Add the measuring class to collapse the document and get clean, consistent coordinates
-        prose.classList.add("docpro-measuring-pagination");
-
-        const autoBreaks: PaginationBreakSpec[] = [];
-        const flowItems: Array<{
-          naturalTop: number;
-          naturalBottom: number;
-          block: HTMLElement;
-          blockStartPos: number;
-          tag: string;
-          splittableLine?: boolean;
-        }> = [];
-
-        try {
-          const collapsedProseRect = prose.getBoundingClientRect();
-          const renderedScale = prose.offsetWidth > 0 ? collapsedProseRect.width / prose.offsetWidth : scale;
-          const visualScale = renderedScale > 0 ? renderedScale : 1;
-
-          // Extract and filter blocks in the clean collapsed layout state
-          const blocks = Array.from(
-            prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre, table, tr, .resizable-image-wrap, .docpro-page-break"),
-          ).filter(
-            (block) => {
-              const containingTable = block.closest("table");
-              if (containingTable && block !== containingTable && block.tagName !== "TR") return false;
-              if (block.tagName === "TR") {
-                const tableRect = containingTable?.getBoundingClientRect();
-                if (tableRect && tableRect.height / visualScale <= usablePageHeight + 1) return false;
-              }
-              if (block.tagName === "TABLE" && block.getBoundingClientRect().height / visualScale > usablePageHeight + 1) {
-                return false;
-              }
-              // Avoid measuring paragraphs or lists inside list items (we only measure the list items)
-              if (block.closest("li") && block.tagName !== "LI") return false;
-              // Avoid measuring elements nested inside manual page break containers if any
-              if (block.closest(".docpro-page-break") && !block.classList.contains("docpro-page-break")) return false;
-              // Avoid measuring absolute images
-              if (block.classList.contains("resizable-image-wrap") && 
-                  (block.getAttribute("data-align") === "behind" || block.getAttribute("data-align") === "front")) {
-                return false;
-              }
-              return true;
-            }
-          );
-
-          blocks.forEach((block) => {
-            const rect = block.getBoundingClientRect();
-            if (block.classList.contains("docpro-page-break") || (rect.width > 0 && rect.height > 0)) {
-              const tag = block.tagName.toLowerCase();
-
-              const blockStartPos = getPaginationBlockPosition(editor.view, block);
-              if (blockStartPos === null) return;
-
-              const widgetTag = tag === "li" ? "li" : tag === "tr" ? "tr" : "div";
-              const canSplitText = (tag === "p" || tag === "li" || tag === "pre") && !block.querySelector("img");
-
-              if (canSplitText && block.textContent) {
-                const lines = new Map<number, { top: number; bottom: number; pos: number }>();
-                const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
-                let textNode: Node | null;
-
-                while ((textNode = walker.nextNode())) {
-                  const text = textNode.textContent ?? "";
-                  if (!text) continue;
-                  const fullRange = document.createRange();
-                  fullRange.selectNodeContents(textNode);
-                  const lineRects = Array.from(fullRange.getClientRects()).filter((lineRect) => lineRect.height > 0);
-
-                  lineRects.forEach((lineRect) => {
-                    let low = 0;
-                    let high = Math.max(0, text.length - 1);
-                    let firstOffset = 0;
-                    while (low <= high) {
-                      const mid = Math.floor((low + high) / 2);
-                      const charRange = document.createRange();
-                      charRange.setStart(textNode as Node, mid);
-                      charRange.setEnd(textNode as Node, Math.min(text.length, mid + 1));
-                      const charRect = charRange.getClientRects()[0];
-                      if (!charRect || charRect.top < lineRect.top - 0.5) {
-                        low = mid + 1;
-                      } else {
-                        firstOffset = mid;
-                        high = mid - 1;
-                      }
-                    }
-
-                    let pos = blockStartPos;
-                    try {
-                      pos = editor.view.posAtDOM(textNode as Node, firstOffset);
-                    } catch {
-                      // Keep the block position as a safe fallback.
-                    }
-                    const naturalTop = (lineRect.top - collapsedProseRect.top) / visualScale + paddingTop;
-                    const naturalBottom = (lineRect.bottom - collapsedProseRect.top) / visualScale + paddingTop;
-                    const key = Math.round(naturalTop * 2);
-                    const existing = lines.get(key);
-                    lines.set(key, existing
-                      ? { top: Math.min(existing.top, naturalTop), bottom: Math.max(existing.bottom, naturalBottom), pos: Math.min(existing.pos, pos) }
-                      : { top: naturalTop, bottom: naturalBottom, pos });
-                  });
-                }
-
-                const sortedLines = Array.from(lines.values()).sort((a, b) => a.top - b.top);
-                sortedLines.forEach((line, idx) => {
-                  flowItems.push({
-                    block,
-                    blockStartPos: line.pos,
-                    naturalTop: line.top,
-                    naturalBottom: line.bottom,
-                    tag: idx === 0 ? widgetTag : "span",
-                    splittableLine: idx > 0,
-                  });
-                });
-              } else {
-                flowItems.push({
-                  block,
-                  blockStartPos,
-                  naturalTop: (rect.top - collapsedProseRect.top) / visualScale + paddingTop,
-                  naturalBottom: (rect.bottom - collapsedProseRect.top) / visualScale + paddingTop,
-                  tag: widgetTag,
-                });
-              }
-            }
-          });
-        } finally {
-          prose.classList.remove("docpro-measuring-pagination");
-        }
-
-        // Sort items by document position (ProseMirror posAtDOM coordinate)
-        flowItems.sort((a, b) => a.blockStartPos - b.blockStartPos || a.naturalTop - b.naturalTop);
-
-        let accumulatedShift = 0;
-        let currentPageIndex = 0;
-        const pageStride = pageHeight + A4_PAGE_GAP;
-        let totalCalculatedHeight = paddingTop + paddingBottom;
-
-        flowItems.forEach((item) => {
-          const isManualBreak = item.block.classList.contains("docpro-page-break");
-          let lineTop = item.naturalTop + accumulatedShift;
-          let lineBottom = item.naturalBottom + accumulatedShift;
-
-          const nextPageContentTop = (currentPageIndex + 1) * pageStride + paddingTop;
-          const pageBottom = currentPageIndex * pageStride + pageHeight - paddingBottom;
-
-          if (isManualBreak) {
-            const height = Math.max(40, nextPageContentTop - lineTop);
-            item.block.style.setProperty("--docpro-page-break-height", `${height}px`);
-            accumulatedShift += height;
-            currentPageIndex++;
-            
-            const finalBottom = item.naturalTop + accumulatedShift;
-            totalCalculatedHeight = Math.max(totalCalculatedHeight, finalBottom + paddingBottom);
-            return;
-          }
-
-          // Put the first overflowing visual line (or atomic block) at the
-          // next page's content start. Positions come from posAtDOM, so marks,
-          // links and Enter/Delete edits cannot desynchronise the decoration.
-          if (lineBottom > pageBottom) {
-            const tag = item.block.tagName.toLowerCase();
-            const itemHeight = item.naturalBottom - item.naturalTop;
-            const shouldMove = item.splittableLine || itemHeight <= usablePageHeight + 1;
-
-            if (shouldMove) {
-              const height = Math.max(0, nextPageContentTop - lineTop);
-              if (height > 0) {
-                let repeatedHeaderData: any = undefined;
-                if (tag === "tr") {
-                  const parentTable = item.block.closest("table");
-                  if (parentTable) {
-                    const firstRow = parentTable.querySelector("tr");
-                    if (firstRow && firstRow !== item.block) {
-                      const cells = Array.from(firstRow.querySelectorAll("td, th"));
-                      repeatedHeaderData = {
-                        colsCount: cells.length,
-                        headerHtml: firstRow.innerHTML,
-                      };
-                    }
-                  }
-                }
-
-                autoBreaks.push({
-                  pos: item.blockStartPos,
-                  height,
-                  tag: item.tag,
-                  tableHeaderHtml: repeatedHeaderData?.headerHtml,
-                  tableColsCount: repeatedHeaderData?.colsCount,
-                });
-                accumulatedShift += height;
-              }
-              currentPageIndex++;
-            } else {
-              // Oversized atomic content cannot fit on one page. Keep it in
-              // flow and advance page tracking so subsequent content remains
-              // aligned rather than repeatedly inserting spacers.
-              currentPageIndex = Math.max(currentPageIndex + 1, Math.floor(lineBottom / pageStride));
-            }
-          }
-
-          const finalBottom = item.naturalBottom + accumulatedShift;
-          totalCalculatedHeight = Math.max(totalCalculatedHeight, finalBottom + paddingBottom);
-        });
-
-        // Ensure we sort autoBreaks by position
-        autoBreaks.sort((a, b) => a.pos - b.pos);
-
-        const signature = paginationBreaksSignature(autoBreaks);
-        if (signature !== previousSignature) {
-          previousSignature = signature;
-          setPaginationBreaks(editor.view, autoBreaks);
-        }
-
-        const pages = Math.max(
-          isPresentation ? breaks.length + 1 : 1,
-          Math.floor(Math.max(0, totalCalculatedHeight - 1) / pageStride) + 1,
-        );
-        if (pageCountRef.current !== pages) {
-          pageCountRef.current = pages;
-          setPageCount(pages);
-        }
-      } finally {
-        isPaginating = false;
-        const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
-        if (prose) {
-          lastHeightWithWidgets = prose.scrollHeight;
-        }
-      }
-    };
-
-    const schedule = (force = false) => {
-      if (isPaginating) return;
-      const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
-      const currentHeight = prose?.scrollHeight ?? 0;
-
-      const docSignature = `${editor.state.doc.content.size}:${editor.state.doc.childCount}:${abntMode}:${scale}:${layoutMode}`;
-      const sigChanged = docSignature !== lastDocSignature;
-      const heightChanged = Math.abs(currentHeight - lastHeightWithWidgets) > 2;
-
-      if (!force && !sigChanged && !heightChanged) return;
-      if (sigChanged) {
-        lastDocSignature = docSignature;
-      }
-
-      if (frame !== null) cancelAnimationFrame(frame);
-      if (debounceTimeout !== null) clearTimeout(debounceTimeout);
-      debounceTimeout = setTimeout(() => {
-        frame = requestAnimationFrame(layout);
-      }, 100);
-    };
-
-    const scheduleEvt = () => schedule();
-    schedule(true); // Force the initial pagination layout calculation on mount/initialization
-    if (editor) {
-      editor.on("update", scheduleEvt);
-      editor.on("transaction", scheduleEvt);
-    }
-
-    // Re-paginate when the rendered size changes (image load, resize, font swap).
-    const resizeObserver = new ResizeObserver(() => schedule());
-    resizeObserver.observe(contentEl);
-    const proseEl = contentEl.querySelector<HTMLElement>(".ProseMirror");
-    if (proseEl) resizeObserver.observe(proseEl);
-
-    // Image load events (capture phase to catch nested <img>).
-    const onImgLoad = (e: Event) => {
-      if ((e.target as HTMLElement)?.tagName === "IMG") schedule(true);
-    };
-    contentEl.addEventListener("load", onImgLoad, true);
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
-        if (!prose) return;
-        const currentHeight = prose.scrollHeight;
-        const docSignature = `${editor.state.doc.content.size}:${editor.state.doc.childCount}:${abntMode}:${scale}:${layoutMode}`;
-        const sigChanged = docSignature !== lastDocSignature;
-        const heightChanged = Math.abs(currentHeight - lastHeightWithWidgets) > 2;
-
-        if (sigChanged || heightChanged) {
-          schedule(true);
-        }
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleVisibilityChange);
-
-    // Safety timeout to ensure pagination runs after the document has finished loading/rendering
-    const initTimeout = setTimeout(() => {
-      schedule(true);
-    }, 300);
-
-    // Re-paginate when all custom fonts have finished loading or if they are already ready
-    const handleFontsLoaded = () => {
-      schedule(true);
-    };
-    if (typeof document !== "undefined" && document.fonts) {
-      document.fonts.addEventListener("loadingdone", handleFontsLoaded);
-      document.fonts.ready.then(handleFontsLoaded);
-    }
+    scheduler.start();
 
     return () => {
-      clearTimeout(initTimeout);
-      if (frame !== null) cancelAnimationFrame(frame);
-      if (debounceTimeout !== null) clearTimeout(debounceTimeout);
-      if (editor) {
-        editor.off("update", scheduleEvt);
-        editor.off("transaction", scheduleEvt);
-      }
-      resizeObserver.disconnect();
-      contentEl.removeEventListener("load", onImgLoad, true);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleVisibilityChange);
-      if (typeof document !== "undefined" && document.fonts) {
-        document.fonts.removeEventListener("loadingdone", handleFontsLoaded);
-      }
+      scheduler.destroy();
     };
   }, [editor, abntMode, scale, layoutMode, pageHeight]);
 
+  const [debugPagination, setDebugPagination] = useState(false);
   const pageStride = pageHeight + A4_PAGE_GAP;
   const contentHeight = pageCount * pageHeight + Math.max(0, pageCount - 1) * A4_PAGE_GAP;
 
@@ -1540,7 +1086,7 @@ function DocPage({
       <div style={{ width: A4_WIDTH * scale, height: contentHeight * scale, marginInline: "auto" }}>
         <div
           ref={pageRef}
-          className={`docpro-editor relative ${isPresentation ? "presentation" : abntMode}`}
+          className={`docpro-editor relative ${isPresentation ? "presentation" : abntMode} ${debugPagination ? "docpro-debug-active" : ""}`}
           style={{
             width: A4_WIDTH,
             height: contentHeight,
@@ -1560,7 +1106,23 @@ function DocPage({
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               }}
-            />
+            >
+              {debugPagination && (
+                <div 
+                  className="absolute border border-dashed border-red-400"
+                  style={{
+                    top: isPresentation ? 32 : abntMode ? 113.385 : 96,
+                    bottom: isPresentation ? 32 : abntMode ? 75.59 : 96,
+                    left: isPresentation ? 48 : abntMode ? 113.385 : 96,
+                    right: isPresentation ? 48 : abntMode ? 75.59 : 96,
+                  }}
+                >
+                  <div className="absolute top-1 left-1 text-[9px] text-red-500 font-mono bg-white px-1 rounded shadow-sm border border-red-200">
+                    Área Útil (Pág {index + 1})
+                  </div>
+                </div>
+              )}
+            </div>
           ))}
 
           {/* Snap Alignment Guides */}
@@ -1611,6 +1173,28 @@ function DocPage({
         </div>
       </div>
       <div className="h-8" />
+
+      {/* Floating Debug Pagination Control Widget */}
+      <div className="fixed bottom-4 right-4 z-[999] bg-white border border-slate-200 rounded-lg p-3 shadow-lg max-w-xs text-xs space-y-2 text-slate-800">
+        <div className="flex items-center justify-between gap-4">
+          <span className="font-semibold text-purple-700">Debug de Paginação</span>
+          <input
+            type="checkbox"
+            checked={debugPagination}
+            onChange={(e) => setDebugPagination(e.target.checked)}
+            className="h-4 w-4 cursor-pointer accent-purple-600"
+          />
+        </div>
+        {debugPagination && (
+          <div className="space-y-1 font-mono text-[10px] text-slate-500 border-t pt-2">
+            <div>Total Páginas: {pageCount}</div>
+            <div>Altura Útil: {pageHeight - (isPresentation ? 64 : abntMode ? 188.975 : 192)}px</div>
+            <div>Gap Páginas: {A4_PAGE_GAP}px</div>
+            <div>Escala Visual: {scale.toFixed(2)}</div>
+            <div>Largura A4: {A4_WIDTH}px</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
