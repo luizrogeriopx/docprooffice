@@ -1205,7 +1205,6 @@ function DocPage({
         const proseRect = prose.getBoundingClientRect();
         const renderedScale = prose.offsetWidth > 0 ? proseRect.width / prose.offsetWidth : scale;
         const visualScale = renderedScale > 0 ? renderedScale : 1;
-        const usablePageHeight = pageHeight - paddingTop - paddingBottom;
 
         // Reset manual breaks temporarily to 0px
         Array.from(prose.children).forEach((child) => {
