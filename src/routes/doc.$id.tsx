@@ -1485,7 +1485,16 @@ function DocPage({
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        schedule(true);
+        const prose = contentEl.querySelector<HTMLElement>(".ProseMirror");
+        if (!prose) return;
+        const currentHeight = prose.scrollHeight;
+        const docSignature = `${editor.state.doc.content.size}:${editor.state.doc.childCount}:${abntMode}:${scale}:${layoutMode}`;
+        const sigChanged = docSignature !== lastDocSignature;
+        const heightChanged = Math.abs(currentHeight - lastHeightWithWidgets) > 2;
+
+        if (sigChanged || heightChanged) {
+          schedule(true);
+        }
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
