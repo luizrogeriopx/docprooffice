@@ -1316,14 +1316,15 @@ function DocPage({
                   });
                 }
 
-                Array.from(lines.values()).forEach((line) => {
+                const sortedLines = Array.from(lines.values()).sort((a, b) => a.top - b.top);
+                sortedLines.forEach((line, idx) => {
                   flowItems.push({
                     block,
                     blockStartPos: line.pos,
                     naturalTop: line.top,
                     naturalBottom: line.bottom,
-                    tag: "span",
-                    splittableLine: true,
+                    tag: idx === 0 ? widgetTag : "span",
+                    splittableLine: idx > 0,
                   });
                 });
               } else {
