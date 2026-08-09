@@ -89,9 +89,7 @@ export class PaginationScheduler {
 
     if (!force && !sigChanged && !heightChanged) return;
 
-    if (sigChanged) {
-      this.lastDocSignature = docSignature;
-    }
+    // We defer setting lastDocSignature until the layout run successfully completes
 
     if (this.debounceTimeout !== null) clearTimeout(this.debounceTimeout);
     if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame);
@@ -140,6 +138,7 @@ export class PaginationScheduler {
         setPaginationBreaks(this.config.editor.view, result.breaks);
       }
 
+      this.lastDocSignature = this.getDocSignature();
       this.lastHeightWithWidgets = prose.scrollHeight;
       this.config.onPageCountChange(result.pageCount);
     } catch (err) {
