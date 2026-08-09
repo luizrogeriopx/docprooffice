@@ -1500,15 +1500,22 @@ function DocPage({
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("focus", handleVisibilityChange);
 
-    // Re-paginate when all custom fonts have finished loading
+    // Safety timeout to ensure pagination runs after the document has finished loading/rendering
+    const initTimeout = setTimeout(() => {
+      schedule(true);
+    }, 300);
+
+    // Re-paginate when all custom fonts have finished loading or if they are already ready
     const handleFontsLoaded = () => {
       schedule(true);
     };
     if (typeof document !== "undefined" && document.fonts) {
       document.fonts.addEventListener("loadingdone", handleFontsLoaded);
+      document.fonts.ready.then(handleFontsLoaded);
     }
 
     return () => {
+      clearTimeout(initTimeout);
       if (frame !== null) cancelAnimationFrame(frame);
       if (debounceTimeout !== null) clearTimeout(debounceTimeout);
       if (editor) {
