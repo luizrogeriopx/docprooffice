@@ -22,6 +22,14 @@ export function runPaginationEngine(
   // 1. Collapse the editor to unpaginated state to measure natural sizes
   proseEl.classList.add("docpro-measuring-pagination");
 
+  // Reset manual page breaks height to 0px temporarily to get correct unpaginated coordinates
+  Array.from(proseEl.children).forEach((child) => {
+    if (!(child instanceof HTMLElement)) return;
+    if (child.classList.contains("docpro-page-break") || child.hasAttribute("data-page-break")) {
+      child.style.setProperty("--docpro-page-break-height", "0px");
+    }
+  });
+
   const flowItems: LayoutBlock[] = [];
 
   try {

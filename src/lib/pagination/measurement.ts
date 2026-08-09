@@ -19,14 +19,14 @@ export function getBlockDocumentPosition(view: EditorView, block: HTMLElement): 
 }
 
 export function getPaginationBlockPosition(view: EditorView, block: HTMLElement): number | null {
-  if (block.tagName.toLowerCase() === "li") {
-    try {
-      return view.posAtDOM(block, 0);
-    } catch {
-      return getBlockDocumentPosition(view, block);
-    }
+  const nodePos = getBlockDocumentPosition(view, block);
+  if (nodePos !== null) return nodePos;
+
+  try {
+    return view.posAtDOM(block, 0);
+  } catch {
+    return null;
   }
-  return getBlockDocumentPosition(view, block);
 }
 
 /**
