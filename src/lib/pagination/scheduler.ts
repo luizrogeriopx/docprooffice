@@ -40,7 +40,17 @@ export class PaginationScheduler {
 
   private handleVisibilityChange = () => {
     if (typeof document !== "undefined" && !document.hidden) {
-      this.schedule(true);
+      const prose = this.config.contentEl.querySelector<HTMLElement>(".ProseMirror");
+      if (!prose) return;
+
+      const currentHeight = prose.scrollHeight;
+      const docSignature = this.getDocSignature();
+      const sigChanged = docSignature !== this.lastDocSignature;
+      const heightChanged = Math.abs(currentHeight - this.lastHeightWithWidgets) > 2;
+
+      if (sigChanged || heightChanged) {
+        this.schedule(true);
+      }
     }
   };
 
