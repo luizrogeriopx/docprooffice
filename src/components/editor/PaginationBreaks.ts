@@ -73,10 +73,10 @@ export const PaginationBreaks = Extension.create({
                         element.innerHTML = `<td colspan="100" style="height: ${Math.max(0, item.height)}px; border: none !important; padding: 0 !important; background: transparent !important;"></td>`;
                       }
                     } else if (tag === "span") {
-                      element.style.display = "inline-block";
-                      element.style.width = "100%";
+                      element.style.display = "block";
+                      element.style.width = "0";
                       element.style.height = `${Math.max(0, item.height)}px`;
-                      element.style.verticalAlign = "top";
+                      element.style.pointerEvents = "none";
                     } else {
                       element.style.setProperty(
                         "--docpro-auto-page-break-height",

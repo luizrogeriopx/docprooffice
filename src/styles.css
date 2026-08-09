@@ -1,6 +1,12 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/tinos/400.css";
+@import "@fontsource/tinos/400-italic.css";
+@import "@fontsource/tinos/700.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -113,6 +119,7 @@
   color: oklch(0.2 0.01 260);
   overflow-wrap: break-word;
   word-break: normal;
+  font-synthesis: none;
 }
 .docpro-editor .ProseMirror p {
   margin: 0 0 0.5em;
@@ -327,10 +334,13 @@
 
 /* Base ABNT: Times New Roman 12pt, line-height 1.5, justify, first-line indent */
 .docpro-editor.abnt .ProseMirror {
-  font-family: "Times New Roman", Times, serif;
+  font-family: "Tinos", "Times New Roman", serif;
   font-size: 12pt;
   line-height: 1.5;
   color: #000;
+}
+.docpro-editor.abnt .ProseMirror span[style*="font-family"] {
+  font-family: "Tinos", "Times New Roman", serif !important;
 }
 .docpro-editor.abnt .ProseMirror p {
   text-align: justify;
@@ -343,7 +353,7 @@
 .docpro-editor.abnt .ProseMirror h4,
 .docpro-editor.abnt .ProseMirror h5,
 .docpro-editor.abnt .ProseMirror h6 {
-  font-family: "Times New Roman", Times, serif;
+  font-family: "Tinos", "Times New Roman", serif;
   text-indent: 0;
   text-align: left;
   text-transform: uppercase;
@@ -443,6 +453,8 @@
 /* For inline span page breaks, keep margins zero */
 .docpro-editor .ProseMirror span.docpro-auto-page-break {
   margin: 0 !important;
+  padding: 0 !important;
+  line-height: 0 !important;
 }
 
 /* For table row page breaks, display as table-row */
@@ -473,7 +485,7 @@
 .docpro-editor .ProseMirror .docpro-page-break {
   display: block;
   height: var(--docpro-page-break-height, 40px);
-  margin: 24px -96px;
+  margin: 0 -96px;
   background:
     repeating-linear-gradient(to right, var(--canvas) 0 8px, transparent 8px 16px), var(--canvas);
   border-top: 1px solid oklch(0.86 0.005 260);

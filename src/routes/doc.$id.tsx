@@ -56,7 +56,7 @@ export const Route = createFileRoute("/doc/$id")({
   head: () => ({ meta: [{ title: "Editor — DocPro" }] }),
 });
 
-const ABNT_FONT_STYLE = "font-family: 'Times New Roman', Times, serif; font-size: 12pt;";
+const ABNT_FONT_STYLE = "font-family: 'Tinos', 'Times New Roman', serif; font-size: 12pt;";
 
 function escapeHtml(value: string): string {
   return value
@@ -1214,22 +1214,30 @@ function DocPage({
         });
 
         const autoBreaks: PaginationBreakSpec[] = [];
-        const visualLines: Array<{
+        const flowItems: Array<{
           naturalTop: number;
           naturalBottom: number;
           block: HTMLElement;
           blockStartPos: number;
           tag: string;
+          splittableLine?: boolean;
         }> = [];
 
         // Extract all text, table row, list item, and image blocks that are part of the main flow
         // Plus manual page breaks (.docpro-page-break) so we can process them sequentially in document order.
         const blocks = Array.from(
-          prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre, tr, .resizable-image-wrap, .docpro-page-break"),
+          prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre, table, tr, .resizable-image-wrap, .docpro-page-break"),
         ).filter(
           (block) => {
-            // Avoid measuring table cells or paragraphs inside table rows (we only measure the rows)
-            if (block.closest("table") && block.tagName !== "TR") return false;
+            const containingTable = block.closest("table");
+            if (containingTable && block !== containingTable && block.tagName !== "TR") return false;
+            if (block.tagName === "TR") {
+              const tableRect = containingTable?.getBoundingClientRect();
+              if (tableRect && tableRect.height / visualScale <= usablePageHeight + 1) return false;
+            }
+            if (block.tagName === "TABLE" && block.getBoundingClientRect().height / visualScale > usablePageHeight + 1) {
+              return false;
+            }
             // Avoid measuring paragraphs or lists inside list items (we only measure the list items)
             if (block.closest("li") && block.tagName !== "LI") return false;
             // Avoid measuring elements nested inside manual page break containers if any
@@ -1250,30 +1258,77 @@ function DocPage({
             if (block.classList.contains("docpro-page-break") || (rect.width > 0 && rect.height > 0)) {
               const tag = block.tagName.toLowerCase();
 
-              if (tag === "table" && rect.height > usablePageHeight + 1) {
-                return;
-              }
-
-              if (tag === "tr") {
-                const table = block.closest("table");
-                const tableRect = table?.getBoundingClientRect();
-                if (tableRect && tableRect.height <= usablePageHeight + 1) {
-                  return;
-                }
-              }
-
               const blockStartPos = getPaginationBlockPosition(editor.view, block);
               if (blockStartPos === null) return;
 
               const widgetTag = tag === "li" ? "li" : tag === "tr" ? "tr" : "div";
+              const canSplitText = (tag === "p" || tag === "li" || tag === "pre") && !block.querySelector("img");
 
-              visualLines.push({
-                block,
-                blockStartPos,
-                naturalTop: (rect.top - proseRect.top) / visualScale + paddingTop,
-                naturalBottom: (rect.bottom - proseRect.top) / visualScale + paddingTop,
-                tag: widgetTag,
-              });
+              if (canSplitText && block.textContent) {
+                const lines = new Map<number, { top: number; bottom: number; pos: number }>();
+                const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+                let textNode: Node | null;
+
+                while ((textNode = walker.nextNode())) {
+                  const text = textNode.textContent ?? "";
+                  if (!text) continue;
+                  const fullRange = document.createRange();
+                  fullRange.selectNodeContents(textNode);
+                  const lineRects = Array.from(fullRange.getClientRects()).filter((lineRect) => lineRect.height > 0);
+
+                  lineRects.forEach((lineRect) => {
+                    let low = 0;
+                    let high = Math.max(0, text.length - 1);
+                    let firstOffset = 0;
+                    while (low <= high) {
+                      const mid = Math.floor((low + high) / 2);
+                      const charRange = document.createRange();
+                      charRange.setStart(textNode as Node, mid);
+                      charRange.setEnd(textNode as Node, Math.min(text.length, mid + 1));
+                      const charRect = charRange.getClientRects()[0];
+                      if (!charRect || charRect.top < lineRect.top - 0.5) {
+                        low = mid + 1;
+                      } else {
+                        firstOffset = mid;
+                        high = mid - 1;
+                      }
+                    }
+
+                    let pos = blockStartPos;
+                    try {
+                      pos = editor.view.posAtDOM(textNode as Node, firstOffset);
+                    } catch {
+                      // Keep the block position as a safe fallback.
+                    }
+                    const naturalTop = (lineRect.top - proseRect.top) / visualScale + paddingTop;
+                    const naturalBottom = (lineRect.bottom - proseRect.top) / visualScale + paddingTop;
+                    const key = Math.round(naturalTop * 2);
+                    const existing = lines.get(key);
+                    lines.set(key, existing
+                      ? { top: Math.min(existing.top, naturalTop), bottom: Math.max(existing.bottom, naturalBottom), pos: Math.min(existing.pos, pos) }
+                      : { top: naturalTop, bottom: naturalBottom, pos });
+                  });
+                }
+
+                Array.from(lines.values()).forEach((line) => {
+                  flowItems.push({
+                    block,
+                    blockStartPos: line.pos,
+                    naturalTop: line.top,
+                    naturalBottom: line.bottom,
+                    tag: "span",
+                    splittableLine: true,
+                  });
+                });
+              } else {
+                flowItems.push({
+                  block,
+                  blockStartPos,
+                  naturalTop: (rect.top - proseRect.top) / visualScale + paddingTop,
+                  naturalBottom: (rect.bottom - proseRect.top) / visualScale + paddingTop,
+                  tag: widgetTag,
+                });
+              }
             }
           });
         } finally {
@@ -1281,14 +1336,14 @@ function DocPage({
         }
 
         // Sort items by document position (ProseMirror posAtDOM coordinate)
-        visualLines.sort((a, b) => a.blockStartPos - b.blockStartPos);
+        flowItems.sort((a, b) => a.blockStartPos - b.blockStartPos || a.naturalTop - b.naturalTop);
 
         let accumulatedShift = 0;
         let currentPageIndex = 0;
         const pageStride = pageHeight + A4_PAGE_GAP;
         let totalCalculatedHeight = paddingTop + paddingBottom;
 
-        visualLines.forEach((item) => {
+        flowItems.forEach((item) => {
           const isManualBreak = item.block.classList.contains("docpro-page-break");
           let lineTop = item.naturalTop + accumulatedShift;
           let lineBottom = item.naturalBottom + accumulatedShift;
@@ -1307,88 +1362,15 @@ function DocPage({
             return;
           }
 
-          // If content block crosses page bottom
+          // Put the first overflowing visual line (or atomic block) at the
+          // next page's content start. Positions come from posAtDOM, so marks,
+          // links and Enter/Delete edits cannot desynchronise the decoration.
           if (lineBottom > pageBottom) {
             const tag = item.block.tagName.toLowerCase();
-            const isSplittable = (tag === "p" || tag === "li" || tag === "pre") && !item.block.querySelector("img");
+            const itemHeight = item.naturalBottom - item.naturalTop;
+            const shouldMove = item.splittableLine || itemHeight <= usablePageHeight + 1;
 
-            if (isSplittable) {
-              const textContent = item.block.textContent || "";
-              let splitStartIdx = 0;
-
-              while (true) {
-                const searchPageBottom = currentPageIndex * pageStride + pageHeight - paddingBottom;
-                const searchNextPageTop = (currentPageIndex + 1) * pageStride + paddingTop;
-
-                let low = splitStartIdx;
-                let high = textContent.length - 1;
-                let foundCharIdx = -1;
-
-                while (low <= high) {
-                  const mid = Math.floor((low + high) / 2);
-                  const charRect = getCharRect(item.block, mid);
-                  if (!charRect) {
-                    low = mid + 1;
-                    continue;
-                  }
-                  const charNaturalBottom = (charRect.bottom - proseRect.top) / visualScale + paddingTop;
-                  const charShiftedBottom = charNaturalBottom + accumulatedShift;
-
-                  if (charShiftedBottom > searchPageBottom) {
-                    foundCharIdx = mid;
-                    high = mid - 1;
-                  } else {
-                    low = mid + 1;
-                  }
-                }
-
-                if (foundCharIdx !== -1) {
-                  let splitIndex = foundCharIdx;
-                  while (splitIndex > splitStartIdx && textContent[splitIndex - 1] !== " " && textContent[splitIndex - 1] !== "\n") {
-                    splitIndex--;
-                  }
-
-                  if (splitIndex === splitStartIdx) {
-                    if (splitStartIdx === 0) {
-                      const height = Math.max(0, searchNextPageTop - lineTop);
-                      if (height > 0) {
-                        autoBreaks.push({ pos: item.blockStartPos, height, tag: item.tag });
-                        accumulatedShift += height;
-                      }
-                      currentPageIndex++;
-                      break;
-                    } else {
-                      const charRect = getCharRect(item.block, splitStartIdx);
-                      const charNaturalTop = charRect ? (charRect.top - proseRect.top) / visualScale + paddingTop : item.naturalTop;
-                      const charShiftedTop = charNaturalTop + accumulatedShift;
-                      const height = Math.max(0, searchNextPageTop - charShiftedTop);
-
-                      if (height > 0) {
-                        autoBreaks.push({ pos: item.blockStartPos + 1 + splitStartIdx, height, tag: "span" });
-                        accumulatedShift += height;
-                      }
-                      currentPageIndex++;
-                      splitStartIdx = splitStartIdx + 1;
-                    }
-                  } else {
-                    const charRect = getCharRect(item.block, splitIndex);
-                    const charNaturalTop = charRect ? (charRect.top - proseRect.top) / visualScale + paddingTop : item.naturalTop;
-                    const charShiftedTop = charNaturalTop + accumulatedShift;
-                    const height = Math.max(0, searchNextPageTop - charShiftedTop);
-
-                    if (height > 0) {
-                      autoBreaks.push({ pos: item.blockStartPos + 1 + splitIndex, height, tag: "span" });
-                      accumulatedShift += height;
-                    }
-                    currentPageIndex++;
-                    splitStartIdx = splitIndex;
-                  }
-                } else {
-                  break;
-                }
-              }
-            } else {
-              // Non-splittable block: push the entire element to the next page
+            if (shouldMove) {
               const height = Math.max(0, nextPageContentTop - lineTop);
               if (height > 0) {
                 let repeatedHeaderData: any = undefined;
@@ -1416,6 +1398,11 @@ function DocPage({
                 accumulatedShift += height;
               }
               currentPageIndex++;
+            } else {
+              // Oversized atomic content cannot fit on one page. Keep it in
+              // flow and advance page tracking so subsequent content remains
+              // aligned rather than repeatedly inserting spacers.
+              currentPageIndex = Math.max(currentPageIndex + 1, Math.floor(lineBottom / pageStride));
             }
           }
 

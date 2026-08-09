@@ -141,7 +141,7 @@ const HIGHLIGHT_COLORS = [
 const FONT_FAMILIES = [
   { value: "Inter, sans-serif", label: "Inter" },
   { value: "Arial, sans-serif", label: "Arial" },
-  { value: "'Times New Roman', Times, serif", label: "Times New Roman" },
+  { value: "'Tinos', 'Times New Roman', serif", label: "Times New Roman" },
   { value: "Georgia, serif", label: "Georgia" },
   { value: "'Courier New', Courier, monospace", label: "Courier New" },
   { value: "Montserrat, sans-serif", label: "Montserrat" },
