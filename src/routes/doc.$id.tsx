@@ -1205,9 +1205,6 @@ function DocPage({
         const paddingBottom = parseFloat(styles.paddingBottom) || 0;
         const usablePageHeight = pageHeight - paddingTop - paddingBottom;
         const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
-        const proseRect = prose.getBoundingClientRect();
-        const renderedScale = prose.offsetWidth > 0 ? proseRect.width / prose.offsetWidth : scale;
-        const visualScale = renderedScale > 0 ? renderedScale : 1;
 
         // Reset manual breaks temporarily to 0px
         Array.from(prose.children).forEach((child) => {
@@ -1216,6 +1213,9 @@ function DocPage({
             child.style.setProperty("--docpro-page-break-height", "0px");
           }
         });
+
+        // Add the measuring class to collapse the document and get clean, consistent coordinates
+        prose.classList.add("docpro-measuring-pagination");
 
         const autoBreaks: PaginationBreakSpec[] = [];
         const flowItems: Array<{
@@ -1227,36 +1227,38 @@ function DocPage({
           splittableLine?: boolean;
         }> = [];
 
-        // Extract all text, table row, list item, and image blocks that are part of the main flow
-        // Plus manual page breaks (.docpro-page-break) so we can process them sequentially in document order.
-        const blocks = Array.from(
-          prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre, table, tr, .resizable-image-wrap, .docpro-page-break"),
-        ).filter(
-          (block) => {
-            const containingTable = block.closest("table");
-            if (containingTable && block !== containingTable && block.tagName !== "TR") return false;
-            if (block.tagName === "TR") {
-              const tableRect = containingTable?.getBoundingClientRect();
-              if (tableRect && tableRect.height / visualScale <= usablePageHeight + 1) return false;
-            }
-            if (block.tagName === "TABLE" && block.getBoundingClientRect().height / visualScale > usablePageHeight + 1) {
-              return false;
-            }
-            // Avoid measuring paragraphs or lists inside list items (we only measure the list items)
-            if (block.closest("li") && block.tagName !== "LI") return false;
-            // Avoid measuring elements nested inside manual page break containers if any
-            if (block.closest(".docpro-page-break") && !block.classList.contains("docpro-page-break")) return false;
-            // Avoid measuring absolute images
-            if (block.classList.contains("resizable-image-wrap") && 
-                (block.getAttribute("data-align") === "behind" || block.getAttribute("data-align") === "front")) {
-              return false;
-            }
-            return true;
-          }
-        );
-
-        prose.classList.add("docpro-measuring-pagination");
         try {
+          const collapsedProseRect = prose.getBoundingClientRect();
+          const renderedScale = prose.offsetWidth > 0 ? collapsedProseRect.width / prose.offsetWidth : scale;
+          const visualScale = renderedScale > 0 ? renderedScale : 1;
+
+          // Extract and filter blocks in the clean collapsed layout state
+          const blocks = Array.from(
+            prose.querySelectorAll<HTMLElement>("p, li, h1, h2, h3, h4, h5, h6, pre, table, tr, .resizable-image-wrap, .docpro-page-break"),
+          ).filter(
+            (block) => {
+              const containingTable = block.closest("table");
+              if (containingTable && block !== containingTable && block.tagName !== "TR") return false;
+              if (block.tagName === "TR") {
+                const tableRect = containingTable?.getBoundingClientRect();
+                if (tableRect && tableRect.height / visualScale <= usablePageHeight + 1) return false;
+              }
+              if (block.tagName === "TABLE" && block.getBoundingClientRect().height / visualScale > usablePageHeight + 1) {
+                return false;
+              }
+              // Avoid measuring paragraphs or lists inside list items (we only measure the list items)
+              if (block.closest("li") && block.tagName !== "LI") return false;
+              // Avoid measuring elements nested inside manual page break containers if any
+              if (block.closest(".docpro-page-break") && !block.classList.contains("docpro-page-break")) return false;
+              // Avoid measuring absolute images
+              if (block.classList.contains("resizable-image-wrap") && 
+                  (block.getAttribute("data-align") === "behind" || block.getAttribute("data-align") === "front")) {
+                return false;
+              }
+              return true;
+            }
+          );
+
           blocks.forEach((block) => {
             const rect = block.getBoundingClientRect();
             if (block.classList.contains("docpro-page-break") || (rect.width > 0 && rect.height > 0)) {
@@ -1304,8 +1306,8 @@ function DocPage({
                     } catch {
                       // Keep the block position as a safe fallback.
                     }
-                    const naturalTop = (lineRect.top - proseRect.top) / visualScale + paddingTop;
-                    const naturalBottom = (lineRect.bottom - proseRect.top) / visualScale + paddingTop;
+                    const naturalTop = (lineRect.top - collapsedProseRect.top) / visualScale + paddingTop;
+                    const naturalBottom = (lineRect.bottom - collapsedProseRect.top) / visualScale + paddingTop;
                     const key = Math.round(naturalTop * 2);
                     const existing = lines.get(key);
                     lines.set(key, existing
@@ -1328,8 +1330,8 @@ function DocPage({
                 flowItems.push({
                   block,
                   blockStartPos,
-                  naturalTop: (rect.top - proseRect.top) / visualScale + paddingTop,
-                  naturalBottom: (rect.bottom - proseRect.top) / visualScale + paddingTop,
+                  naturalTop: (rect.top - collapsedProseRect.top) / visualScale + paddingTop,
+                  naturalBottom: (rect.bottom - collapsedProseRect.top) / visualScale + paddingTop,
                   tag: widgetTag,
                 });
               }
