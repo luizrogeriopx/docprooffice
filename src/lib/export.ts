@@ -139,7 +139,7 @@ export async function exportToDocx(editor: Editor | null, title: string, abntMod
         bq.style.padding = "0";
       });
 
-      doc.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((h) => {
+      doc.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6").forEach((h) => {
         h.style.fontFamily = fontFamily;
         h.style.lineHeight = "1.5";
         h.style.margin = "12pt 0 6pt 0";
@@ -162,7 +162,7 @@ export async function exportToDocx(editor: Editor | null, title: string, abntMod
     }
 
     // Call the server function to build DOCX
-    const res = await generateDocxServer({ html, title, abntMode });
+    const res = await generateDocxServer({ data: { html, title, abntMode } });
     
     // Decode base64 to binary
     const binary = atob(res.base64);

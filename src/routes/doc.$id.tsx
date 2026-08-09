@@ -1200,6 +1200,7 @@ function DocPage({
         const styles = window.getComputedStyle(contentEl);
         const paddingTop = parseFloat(styles.paddingTop) || 0;
         const paddingBottom = parseFloat(styles.paddingBottom) || 0;
+        const usablePageHeight = pageHeight - paddingTop - paddingBottom;
         const breaks = Array.from(prose.querySelectorAll<HTMLElement>(".docpro-page-break"));
         const proseRect = prose.getBoundingClientRect();
         const renderedScale = prose.offsetWidth > 0 ? proseRect.width / prose.offsetWidth : scale;
